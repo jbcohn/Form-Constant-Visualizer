@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#090d16">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Form Constants Visualizer</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌀</text></svg>">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Canvas Viewport Area -->
+        <div id="canvas-container">
+            <canvas id="viewport-canvas"></canvas>
+            <div id="toast" class="hidden"></div>
+        </div>
+        
+        <!-- Interactive Control Panel (Sidebar on desktop / bottom-sheet on mobile) -->
+        <div id="control-panel">
+            <div id="drag-handle" class="mobile-only">
+                <div class="handle-bar"></div>
+            </div>
+            
+            <header id="panel-header">
+                <h1>FORM CONSTANTS VISUALIZER</h1>
+            </header>
+            
+            <div id="panel-scroll">
+                <!-- Section 2: Layer Settings -->
+                <section class="control-section">
+                    <div class="tabs-group" id="layer-tabs">
+                        <button class="tab-btn active" data-layer="0">Layer 1</button>
+                        <button class="tab-btn" data-layer="1">Layer 2</button>
+                        <button class="tab-btn" data-layer="2">Layer 3</button>
+                        <button class="tab-btn" data-layer="3">Layer 4</button>
+                    </div>
+                    
+                    <div class="checkbox-row">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="chk-layer-active" checked>
+                            <span class="checkmark"></span>
+                            Layer Enabled
+                        </label>
+                    </div>
+                    
+                    <div class="tabs-group secondary" id="type-tabs">
+                        <button class="tab-btn active" data-type="Spirals">Spirals</button>
+                        <button class="tab-btn" data-type="Cobwebs">Cobwebs</button>
+                        <button class="tab-btn" data-type="Tunnels">Tunnels</button>
+                        <button class="tab-btn" data-type="Lattices">Lattices</button>
+                        <button class="tab-btn" data-type="Phyllo">Phyllo</button>
+                    </div>
+                    
+                    <!-- Dynamic Layer Sliders Container (Injected by JS) -->
+                    <div id="dynamic-sliders-container"></div>
+                </section>
+                
+                <!-- Section 3: Global Parameters -->
+                <section class="control-section">
+                    <h3 class="section-title">GLOBAL SETTINGS</h3>
+                    
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Global Scale</span>
+                            <span id="val-global-scale">1.00</span>
+                        </div>
+                        <input type="range" id="slide-global-scale" min="0.2" max="1.8" step="0.01" value="1.0">
+                    </div>
+                    
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Line Thickness</span>
+                            <span id="val-global-thick">1.50</span>
+                        </div>
+                        <input type="range" id="slide-global-thick" min="0.5" max="7" step="0.1" value="1.5">
+                    </div>
+                    
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Color Shift</span>
+                            <span id="val-global-shift">0.00</span>
+                        </div>
+                        <input type="range" id="slide-global-shift" min="0" max="1" step="0.01" value="0.0">
+                    </div>
+                    
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Global Rotation</span>
+                            <span id="val-global-rot">0°</span>
+                        </div>
+                        <input type="range" id="slide-global-rot" min="0" max="360" step="1" value="0">
+                    </div>
+                </section>
+
+                <!-- Section 1: Presets & Colors -->
+                <section class="control-section">
+                    <div class="row">
+                        <div class="col">
+                            <label>Preset Template</label>
+                            <div class="selector-arrows">
+                                <button id="btn-prev-preset" class="arrow-btn">&lt;</button>
+                                <span id="lbl-preset" class="select-label">Hypnagogic Tunnel</span>
+                                <button id="btn-next-preset" class="arrow-btn">&gt;</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <label>Color Palette</label>
+                            <div class="selector-arrows">
+                                <button id="btn-prev-palette" class="arrow-btn">&lt;</button>
+                                <span id="lbl-palette" class="select-label">Neon Cyberpunk</span>
+                                <button id="btn-next-palette" class="arrow-btn">&gt;</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- Bottom Sticky Actions -->
+            <footer id="panel-actions">
+                <button id="btn-randomize" class="action-btn secondary-btn">Randomize</button>
+                <button id="btn-export-trans" class="action-btn primary-btn">Export Trans</button>
+                <button id="btn-export-dark" class="action-btn primary-btn">Export Dark</button>
+            </footer>
+        </div>
+    </div>
+    
+    <!-- Code Script -->
+    <script src="app.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered successfully.'))
+                    .catch(err => console.log('Service Worker registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>

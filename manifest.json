@@ -1,0 +1,16 @@
+{
+  "short_name": "Visualizer",
+  "name": "Mandala & Form Constants Visualizer",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#020617",
+  "theme_color": "#090d16",
+  "display": "standalone",
+  "orientation": "any"
+}

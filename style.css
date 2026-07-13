@@ -1,0 +1,496 @@
+/* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #020617;
+    color: #f8fafc;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* Main Layout Grid */
+#app-container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Viewport Canvas Area */
+#canvas-container {
+    flex: 1;
+    position: relative;
+    background-color: #020617; /* Deep midnight slate */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#viewport-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    touch-action: none;
+}
+
+/* Control Panel Sidebar (Desktop default) */
+#control-panel {
+    width: 400px;
+    background-color: #0f172a; /* Slate-900 background */
+    border-left: 2px solid #1e293b;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+    z-index: 5;
+}
+
+/* Header Banner */
+#panel-header {
+    background-color: #1e293b;
+    padding: 16px 20px;
+    border-bottom: 1px solid #334155;
+    text-align: center;
+}
+
+#panel-header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #38bdf8; /* Sky-400 */
+    letter-spacing: 0.1em;
+}
+
+/* Scrolling Sidebar Content */
+#panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #0f172a;
+}
+
+/* Custom Scrollbar for Sidebar */
+#panel-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+#panel-scroll::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+#panel-scroll::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+    border: 2px solid #0f172a;
+}
+
+#panel-scroll::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Sections */
+.control-section {
+    background: rgba(30, 41, 59, 0.4); /* Slate-800 with transparency */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+}
+
+/* Grid helper rows */
+.row {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+}
+
+.col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+/* Custom Selectors (Arrow buttons + center label) */
+.selector-arrows {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    height: 35px;
+    overflow: hidden;
+}
+
+.arrow-btn {
+    width: 35px;
+    height: 100%;
+    background: none;
+    border: none;
+    color: #f8fafc;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background-color 0.2s;
+}
+
+.arrow-btn:hover {
+    background-color: #334155;
+}
+
+.select-label {
+    flex: 1;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #38bdf8;
+    user-select: none;
+}
+
+/* Tab buttons group */
+.tabs-group {
+    display: flex;
+    flex-direction: row;
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 0;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background-color: #38bdf8;
+    color: #0f172a;
+}
+
+/* Secondary (5-option) Tab group */
+.tabs-group.secondary {
+    padding: 2px;
+}
+
+.tabs-group.secondary .tab-btn {
+    font-size: 0.73rem;
+    padding: 6px 0;
+}
+
+/* Slider Row */
+.slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 14px;
+}
+
+.slider-row:first-of-type {
+    margin-top: 0;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+}
+
+/* Custom Styled Range Sliders */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #334155;
+    border-radius: 3px;
+    outline: none;
+    margin: 0;
+    padding: 6px 0;
+    touch-action: pan-y; /* Prevent vertical touch scroll from moving slider values */
+    box-sizing: content-box;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
+    transition: transform 0.1s, background-color 0.1s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: #0ea5e9;
+    transform: scale(1.15);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+    background: #0ea5e9;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
+    transition: transform 0.1s;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    background: #0ea5e9;
+    transform: scale(1.15);
+}
+
+/* Custom Checkbox styles */
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    padding: 3px 0;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    user-select: none;
+    color: #e2e8f0;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    height: 18px;
+    width: 18px;
+    background-color: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    margin-right: 10px;
+    display: inline-block;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+    border-color: #38bdf8;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: #38bdf8;
+    border-color: #38bdf8;
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.checkbox-container .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid #0f172a;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Footer Action Buttons Container */
+#panel-actions {
+    padding: 16px 20px;
+    background-color: #1e293b;
+    border-top: 1px solid #334155;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    height: 40px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.primary-btn {
+    background-color: #0284c7; /* Sky-600 */
+    color: #ffffff;
+    border: 1px solid #0ea5e9;
+}
+
+.primary-btn:hover {
+    background-color: #0ea5e9;
+}
+
+.secondary-btn {
+    background-color: #334155;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+}
+
+.secondary-btn:hover {
+    background-color: #475569;
+}
+
+/* Success Toast Notifications */
+#toast {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(4, 120, 87, 0.95); /* Semi-transparent emerald-700 */
+    border: 1px solid #34d399; /* Emerald-400 */
+    color: #d1fae5;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    transition: opacity 0.3s, transform 0.3s;
+    text-align: center;
+    pointer-events: none;
+}
+
+#toast.hidden {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+}
+
+/* Mobile Utilities classes */
+.mobile-only {
+    display: none;
+}
+
+/* ==========================================================================
+   Responsive Mobile Styling (Bottom Sheet Layout)
+   ========================================================================== */
+@media (max-width: 800px) {
+    #app-container {
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    #canvas-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vw;
+        background-color: #020617;
+        z-index: 2;
+    }
+    
+    #control-panel {
+        position: fixed;
+        top: 100vw;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: auto;
+        border-left: none;
+        border-top: 2px solid #1e293b;
+        border-radius: 0;
+        transform: none;
+        transition: none;
+        background-color: #0f172a;
+        display: flex;
+        flex-direction: column;
+        z-index: 5;
+    }
+    
+    .mobile-only {
+        display: none;
+    }
+    
+    #drag-handle {
+        display: none;
+    }
+    
+    #panel-header {
+        display: none;
+    }
+    
+    #panel-scroll {
+        padding: 12px 18px; /* Extra horizontal padding for scrolling gutter */
+        gap: 12px;
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    #panel-actions {
+        padding: 10px 14px 12px 14px;
+        background-color: #1e293b;
+        border-top: 1px solid #334155;
+        flex-shrink: 0;
+    }
+    
+    /* Toast spacing on mobile */
+    #toast {
+        bottom: calc(100vh - 100vw + 20px);
+        max-width: 90%;
+        font-size: 0.8rem;
+    }
+}
