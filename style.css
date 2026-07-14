@@ -526,6 +526,69 @@ input[type="range"]::-moz-range-thumb:hover {
     color: #ffffff;
 }
 
+/* Lockable Settings Controls Layout */
+.lockable-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
+}
+
+.lockable-row .col {
+    flex: 1;
+}
+
+.lock-btn {
+    background: transparent;
+    border: none;
+    color: #64748b; /* Slate-500 */
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 6px;
+    margin-bottom: 2px;
+    transition: color 0.2s, transform 0.1s, text-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.lock-btn.locked {
+    color: #38bdf8; /* Cyberpunk cyan */
+    transform: scale(1.15);
+    text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.lock-btn:hover {
+    color: #0ea5e9;
+}
+
+/* Palette Grid Segmented Control Layout */
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+.palette-grid .segment-btn {
+    border-radius: 4px !important;
+    height: 30px;
+    font-size: 0.72rem;
+    border: 1px solid #334155;
+    background: rgba(30, 41, 59, 0.7);
+}
+
+@media (max-width: 480px) {
+    .palette-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+
 /* ==========================================================================
    Responsive Mobile Styling (Bottom Sheet Layout)
    ========================================================================== */

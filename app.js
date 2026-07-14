@@ -122,70 +122,33 @@ const state = {
     globalColorShift: 0.0,
     globalRotation: 0,
     activePaletteIdx: 0,
-    activePresetIdx: 0,
     toastTimer: null,
     autoplayMode: "off", // off, random, favorites
     transitionDuration: 1500, // duration in milliseconds
-    autoplayTimer: null
+    autoplayTimer: null,
+    
+    // Lock states for individual properties from randomization
+    locks: {
+        globalScale: false,
+        globalLineWidth: false,
+        globalColorShift: false,
+        globalRotation: false,
+        palette: false,
+        layerActive: [false, false, false, false],
+        layerType: [false, false, false, false],
+        layerColorOffset: [false, false, false, false],
+        layerParams: [
+            {}, // Layer 1 parameter locks
+            {}, // Layer 2
+            {}, // Layer 3
+            {}  // Layer 4
+        ]
+    }
 };
 
 // Undo History State Stack
 const stateHistory = [];
 const MAX_HISTORY_LEN = 30;
-
-// Default Preset Configurations for Form Constants (Exactly 4 layers per preset)
-const PRESETS = [
-    {
-        name: "Hypnagogic Tunnel",
-        palette: "Neon Cyberpunk",
-        layers: [
-            {type: "Tunnels", active: true, params: {rings: 28, sides: 6, perspective: 2.0, twist: 1.5, wobble: 0.08, radius: 0.9}, col_off: 0.0},
-            {type: "Cobwebs", active: true, params: {count: 12, rings: 8, spacing: 1.4, sag: 0.25, radius: 0.9, thickness: 1.5}, col_off: 0.3},
-            {type: "Spirals", active: false, params: {arms: 4, tightness: 1.0, turns: 3.0, wave_amp: 0.02, wave_freq: 6.0, radius: 0.85}, col_off: 0.0},
-            {type: "Lattices", active: false, params: {grid_type: 0, cell_scale: 0.08, rotation: 0, thickness: 2.0, radius: 0.85, double_grid: 0}, col_off: 0.0}
-        ]
-    },
-    {
-        name: "Spiral Vortex",
-        palette: "Cosmic Aurora",
-        layers: [
-            {type: "Spirals", active: true, params: {arms: 2, tightness: 0.8, turns: 4.5, wave_amp: 0.05, wave_freq: 8.0, radius: 0.95}, col_off: 0.0},
-            {type: "Spirals", active: true, params: {arms: 2, tightness: 0.8, turns: 4.5, wave_amp: 0.05, wave_freq: 8.0, radius: 0.95}, col_off: 0.5},
-            {type: "Tunnels", active: false, params: {rings: 20, sides: 0, perspective: 2.0, twist: 1.0, wobble: 0.05, radius: 0.9}, col_off: 0.0},
-            {type: "Lattices", active: false, params: {grid_type: 1, cell_scale: 0.08, rotation: 0, thickness: 2.0, radius: 0.85, double_grid: 0}, col_off: 0.0}
-        ]
-    },
-    {
-        name: "Honeycomb Lattice",
-        palette: "Gold & Onyx",
-        layers: [
-            {type: "Lattices", active: true, params: {grid_type: 2, cell_scale: 0.06, rotation: 0, thickness: 2.0, radius: 0.9, double_grid: 0}, col_off: 0.0},
-            {type: "Tunnels", active: true, params: {rings: 5, sides: 6, perspective: 5.0, twist: 0.0, wobble: 0.0, radius: 0.9}, col_off: 0.25},
-            {type: "Cobwebs", active: true, params: {count: 6, rings: 1, spacing: 1.0, sag: 0.0, radius: 0.9, thickness: 2.0}, col_off: 0.5},
-            {type: "Spirals", active: false, params: {arms: 4, tightness: 1.0, turns: 3.0, wave_amp: 0.02, wave_freq: 6.0, radius: 0.85}, col_off: 0.0}
-        ]
-    },
-    {
-        name: "Labyrinth Web",
-        palette: "Lava Flame",
-        layers: [
-            {type: "Cobwebs", active: true, params: {count: 18, rings: 12, spacing: 1.1, sag: 0.35, radius: 0.9, thickness: 1.8}, col_off: 0.0},
-            {type: "Lattices", active: true, params: {grid_type: 0, cell_scale: 0.05, rotation: 45, thickness: 1.5, radius: 0.9, double_grid: 1}, col_off: 0.4},
-            {type: "Tunnels", active: false, params: {rings: 20, sides: 0, perspective: 2.0, twist: 1.0, wobble: 0.05, radius: 0.9}, col_off: 0.0},
-            {type: "Spirals", active: false, params: {arms: 4, tightness: 1.0, turns: 3.0, wave_amp: 0.02, wave_freq: 6.0, radius: 0.85}, col_off: 0.0}
-        ]
-    },
-    {
-        name: "Golden Phyllotaxis",
-        palette: "Forest Sage",
-        layers: [
-            {type: "Phyllo", active: true, params: {count: 480, div_angle: 137.508, radius: 0.9, size: 0.038, decay: 0.5, shape_type: 4}, col_off: 0.0},
-            {type: "Cobwebs", active: true, params: {count: 13, rings: 1, spacing: 1.0, sag: 0.0, radius: 0.92, thickness: 2.0}, col_off: 0.5},
-            {type: "Tunnels", active: false, params: {rings: 20, sides: 0, perspective: 2.0, twist: 1.0, wobble: 0.05, radius: 0.9}, col_off: 0.0},
-            {type: "Lattices", active: false, params: {grid_type: 0, cell_scale: 0.08, rotation: 0, thickness: 2.0, radius: 0.85, double_grid: 0}, col_off: 0.0}
-        ]
-    }
-];
 
 // Initialize Canvas
 const canvas = document.getElementById("viewport-canvas");
@@ -862,7 +825,25 @@ function rebuildDynamicSliders() {
     // 1. Inject Dynamic Sliders / Controls
     activeDefs.forEach(def => {
         const row = document.createElement("div");
-        row.className = "slider-row";
+        row.className = "slider-row lockable-row";
+        
+        // Add lock button
+        const lockBtn = document.createElement("button");
+        lockBtn.className = "lock-btn";
+        const isLocked = state.locks.layerParams[state.currentLayerIdx][def.key] || false;
+        lockBtn.classList.toggle("locked", isLocked);
+        lockBtn.textContent = isLocked ? "🔒" : "🔓";
+        lockBtn.title = "Lock Setting from Randomization";
+        lockBtn.addEventListener("click", () => {
+            const locks = state.locks.layerParams[state.currentLayerIdx];
+            locks[def.key] = !locks[def.key];
+            lockBtn.classList.toggle("locked", locks[def.key]);
+            lockBtn.textContent = locks[def.key] ? "🔒" : "🔓";
+        });
+        row.appendChild(lockBtn);
+        
+        const col = document.createElement("div");
+        col.className = "col";
         
         const header = document.createElement("div");
         header.className = "slider-header";
@@ -870,7 +851,7 @@ function rebuildDynamicSliders() {
         const labelSpan = document.createElement("span");
         labelSpan.textContent = def.label;
         header.appendChild(labelSpan);
-        row.appendChild(header);
+        col.appendChild(header);
         
         if (def.options) {
             // Segmented button group for discrete values
@@ -896,7 +877,7 @@ function rebuildDynamicSliders() {
                 group.appendChild(btn);
             });
             
-            row.appendChild(group);
+            col.appendChild(group);
         } else {
             // Standard range slider for continuous values
             const valSpan = document.createElement("span");
@@ -927,15 +908,33 @@ function rebuildDynamicSliders() {
                 drawMandalaOnScreen();
             });
             
-            row.appendChild(input);
+            col.appendChild(input);
         }
         
+        row.appendChild(col);
         container.appendChild(row);
     });
     
     // 2. Inject Color Offset Slider for this Layer
     const colRow = document.createElement("div");
-    colRow.className = "slider-row";
+    colRow.className = "slider-row lockable-row";
+    
+    // Add lock button
+    const colLockBtn = document.createElement("button");
+    colLockBtn.className = "lock-btn";
+    const isColLocked = state.locks.layerColorOffset[state.currentLayerIdx] || false;
+    colLockBtn.classList.toggle("locked", isColLocked);
+    colLockBtn.textContent = isColLocked ? "🔒" : "🔓";
+    colLockBtn.title = "Lock Setting from Randomization";
+    colLockBtn.addEventListener("click", () => {
+        state.locks.layerColorOffset[state.currentLayerIdx] = !state.locks.layerColorOffset[state.currentLayerIdx];
+        colLockBtn.classList.toggle("locked", state.locks.layerColorOffset[state.currentLayerIdx]);
+        colLockBtn.textContent = state.locks.layerColorOffset[state.currentLayerIdx] ? "🔒" : "🔓";
+    });
+    colRow.appendChild(colLockBtn);
+    
+    const offsetCol = document.createElement("div");
+    offsetCol.className = "col";
     
     const colHeader = document.createElement("div");
     colHeader.className = "slider-header";
@@ -963,8 +962,9 @@ function rebuildDynamicSliders() {
         drawMandalaOnScreen();
     });
     
-    colRow.appendChild(colHeader);
-    colRow.appendChild(colInput);
+    offsetCol.appendChild(colHeader);
+    offsetCol.appendChild(colInput);
+    colRow.appendChild(offsetCol);
     container.appendChild(colRow);
 }
 
@@ -1147,7 +1147,9 @@ function animateTransitionStep(timestamp) {
     
     // Palette shifts at midpoint
     state.activePaletteIdx = t >= 0.5 ? target.paletteIdx : start.paletteIdx;
-    document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
+    document.querySelectorAll("#control-palette .segment-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.getAttribute("data-palette-idx")) === state.activePaletteIdx);
+    });
     
     // Interpolate Layers
     for (let i = 0; i < 4; i++) {
@@ -1225,26 +1227,6 @@ function animateTransitionStep(timestamp) {
     }
 }
 
-// Convert template preset config into visual target state
-function makeTargetStateFromPreset(preset) {
-    const target = captureCurrentStateSnapshot();
-    
-    const palIdx = PALETTES.indexOf(preset.palette);
-    if (palIdx !== -1) target.paletteIdx = palIdx;
-    
-    preset.layers.forEach((plyr, idx) => {
-        const targetLayer = target.layers[idx];
-        targetLayer.type = plyr.type;
-        targetLayer.active = plyr.active;
-        targetLayer.color_offset = plyr.col_off;
-        for (let k in plyr.params) {
-            targetLayer.params[plyr.type][k] = plyr.params[k];
-        }
-    });
-    
-    return target;
-}
-
 // Convert favorite config into visual target state
 function makeTargetStateFromFav(fav) {
     const target = captureCurrentStateSnapshot();
@@ -1269,111 +1251,100 @@ function makeTargetStateFromFav(fav) {
     return target;
 }
 
-// Preset Loader
-function loadPreset(preset, animate = true) {
-    const targetState = makeTargetStateFromPreset(preset);
-    
-    if (animate) {
-        startTransitionTo(targetState);
-    } else {
-        state.activePaletteIdx = targetState.paletteIdx;
-        document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
-        
-        preset.layers.forEach((plyr, idx) => {
-            const layer = state.layers[idx];
-            layer.type = plyr.type;
-            layer.active = plyr.active;
-            layer.color_offset = plyr.col_off;
-            for (let k in plyr.params) {
-                layer.params[layer.type][k] = plyr.params[k];
-            }
-        });
-        
-        document.getElementById("chk-layer-active").checked = state.layers[state.currentLayerIdx].active;
-        
-        const activeLayer = state.layers[state.currentLayerIdx];
-        document.querySelectorAll("#layer-tabs .tab-btn").forEach((btn, idx) => {
-            btn.classList.toggle("active", idx === state.currentLayerIdx);
-        });
-        document.querySelectorAll("#type-tabs .tab-btn").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.type === activeLayer.type);
-        });
-        
-        rebuildDynamicSliders();
-        drawMandalaOnScreen();
-    }
-}
-
-// Generate a completely randomized visual target state snapshot
+// Generate a completely randomized visual target state snapshot, respecting lock settings
 function getRandomTargetState() {
     const target = captureCurrentStateSnapshot();
     
-    target.layers[0].active = true;
-    for (let i = 1; i < 4; i++) {
-        target.layers[i].active = Math.random() < 0.65;
+    // Global lock checks
+    if (!state.locks.globalScale) {
+        target.globalScale = parseFloat((Math.random() * 1.6 + 0.2).toFixed(2));
+    }
+    if (!state.locks.globalLineWidth) {
+        target.globalLineWidth = parseFloat((Math.random() * 1.4 + 0.6).toFixed(2));
+    }
+    if (!state.locks.globalColorShift) {
+        target.globalColorShift = parseFloat(Math.random().toFixed(2));
+    }
+    if (!state.locks.globalRotation) {
+        target.globalRotation = Math.floor(Math.random() * 360);
+    }
+    if (!state.locks.palette) {
+        target.paletteIdx = Math.floor(Math.random() * PALETTES.length);
     }
     
     const types = ["Spirals", "Cobwebs", "Tunnels", "Lattices", "Phyllo"];
     
-    target.layers.forEach(layer => {
-        layer.type = types[Math.floor(Math.random() * types.length)];
-        layer.color_offset = Math.random();
+    target.layers.forEach((layer, idx) => {
+        // Layer active state randomization lock
+        if (!state.locks.layerActive[idx]) {
+            // Layer 1 is always active, others random
+            layer.active = idx === 0 ? true : (Math.random() < 0.65);
+        }
+        
+        // Layer type randomization lock
+        if (!state.locks.layerType[idx]) {
+            layer.type = types[Math.floor(Math.random() * types.length)];
+        }
+        
+        // Layer color offset randomization lock
+        if (!state.locks.layerColorOffset[idx]) {
+            layer.color_offset = Math.random();
+        }
+        
+        const pLocks = state.locks.layerParams[idx];
         
         // Spirals random
-        layer.params.Spirals.arms = Math.floor(Math.random() * 12) + 1;
-        layer.params.Spirals.tightness = parseFloat((Math.random() * 1.5 + 0.5).toFixed(2));
-        layer.params.Spirals.turns = parseFloat((Math.random() * 5 + 1.5).toFixed(2));
-        layer.params.Spirals.wave_amp = Math.random() < 0.6 ? parseFloat((Math.random() * 0.08).toFixed(3)) : 0.0;
-        layer.params.Spirals.wave_freq = parseFloat((Math.random() * 10 + 2).toFixed(1));
-        layer.params.Spirals.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
-        layer.params.Spirals.depth_stroke = Math.random() < 0.5 ? 1 : 0;
+        if (!pLocks.arms) layer.params.Spirals.arms = Math.floor(Math.random() * 12) + 1;
+        if (!pLocks.tightness) layer.params.Spirals.tightness = parseFloat((Math.random() * 1.5 + 0.5).toFixed(2));
+        if (!pLocks.turns) layer.params.Spirals.turns = parseFloat((Math.random() * 5 + 1.5).toFixed(2));
+        if (!pLocks.wave_amp) layer.params.Spirals.wave_amp = Math.random() < 0.6 ? parseFloat((Math.random() * 0.08).toFixed(3)) : 0.0;
+        if (!pLocks.wave_freq) layer.params.Spirals.wave_freq = parseFloat((Math.random() * 10 + 2).toFixed(1));
+        if (!pLocks.radius) layer.params.Spirals.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
+        if (!pLocks.depth_stroke) layer.params.Spirals.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Cobwebs random
-        layer.params.Cobwebs.count = Math.floor(Math.random() * 20) + 4;
-        layer.params.Cobwebs.rings = Math.floor(Math.random() * 15) + 3;
-        layer.params.Cobwebs.spacing = parseFloat((Math.random() * 1.1 + 0.7).toFixed(2));
-        layer.params.Cobwebs.sag = parseFloat((Math.random() * 0.6 - 0.15).toFixed(2));
-        layer.params.Cobwebs.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
-        layer.params.Cobwebs.thickness = parseFloat((Math.random() * 1.7 + 0.8).toFixed(1));
-        layer.params.Cobwebs.depth_stroke = Math.random() < 0.5 ? 1 : 0;
+        if (!pLocks.count) layer.params.Cobwebs.count = Math.floor(Math.random() * 20) + 4;
+        if (!pLocks.rings) layer.params.Cobwebs.rings = Math.floor(Math.random() * 15) + 3;
+        if (!pLocks.spacing) layer.params.Cobwebs.spacing = parseFloat((Math.random() * 1.1 + 0.7).toFixed(2));
+        if (!pLocks.sag) layer.params.Cobwebs.sag = parseFloat((Math.random() * 0.6 - 0.15).toFixed(2));
+        if (!pLocks.radius) layer.params.Cobwebs.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
+        if (!pLocks.thickness) layer.params.Cobwebs.thickness = parseFloat((Math.random() * 1.7 + 0.8).toFixed(1));
+        if (!pLocks.depth_stroke) layer.params.Cobwebs.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Tunnels random
-        layer.params.Tunnels.rings = Math.floor(Math.random() * 25) + 5;
-        layer.params.Tunnels.sides = [0, 0, 3, 4, 5, 6, 8][Math.floor(Math.random() * 7)];
-        layer.params.Tunnels.perspective = parseFloat((Math.random() * 5 + 1).toFixed(1));
-        layer.params.Tunnels.twist = Math.random() < 0.6 ? parseFloat((Math.random() * 5 - 2.5).toFixed(1)) : 0.0;
-        layer.params.Tunnels.wobble = Math.random() < 0.5 ? parseFloat((Math.random() * 0.15).toFixed(3)) : 0.0;
-        layer.params.Tunnels.radius = parseFloat((Math.random() * 0.45 + 0.5).toFixed(2));
-        layer.params.Tunnels.depth_stroke = Math.random() < 0.5 ? 1 : 0;
+        if (!pLocks.rings) layer.params.Tunnels.rings = Math.floor(Math.random() * 25) + 5;
+        if (!pLocks.sides) layer.params.Tunnels.sides = [0, 0, 3, 4, 5, 6, 8][Math.floor(Math.random() * 7)];
+        if (!pLocks.perspective) layer.params.Tunnels.perspective = parseFloat((Math.random() * 5 + 1).toFixed(1));
+        if (!pLocks.twist) layer.params.Tunnels.twist = Math.random() < 0.6 ? parseFloat((Math.random() * 5 - 2.5).toFixed(1)) : 0.0;
+        if (!pLocks.wobble) layer.params.Tunnels.wobble = Math.random() < 0.5 ? parseFloat((Math.random() * 0.15).toFixed(3)) : 0.0;
+        if (!pLocks.radius) layer.params.Tunnels.radius = parseFloat((Math.random() * 0.45 + 0.5).toFixed(2));
+        if (!pLocks.depth_stroke) layer.params.Tunnels.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Lattices random
-        layer.params.Lattices.grid_type = Math.floor(Math.random() * 4); // covers LogHex (Style 3)
-        layer.params.Lattices.cell_scale = parseFloat((Math.random() * 0.11 + 0.05).toFixed(3));
-        layer.params.Lattices.rotation = Math.floor(Math.random() * 180);
-        layer.params.Lattices.thickness = parseFloat((Math.random() * 1.4 + 0.8).toFixed(1));
-        layer.params.Lattices.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
-        layer.params.Lattices.double_grid = Math.random() < 0.25 ? 1 : 0;
-        layer.params.Lattices.boundaries = Math.random() < 0.5 ? 1 : 0;
-        layer.params.Lattices.depth_stroke = Math.random() < 0.5 ? 1 : 0;
+        if (!pLocks.grid_type) layer.params.Lattices.grid_type = Math.floor(Math.random() * 4);
+        if (!pLocks.cell_scale) layer.params.Lattices.cell_scale = parseFloat((Math.random() * 0.11 + 0.05).toFixed(3));
+        if (!pLocks.rotation) layer.params.Lattices.rotation = Math.floor(Math.random() * 180);
+        if (!pLocks.thickness) layer.params.Lattices.thickness = parseFloat((Math.random() * 1.4 + 0.8).toFixed(1));
+        if (!pLocks.radius) layer.params.Lattices.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
+        if (!pLocks.double_grid) layer.params.Lattices.double_grid = Math.random() < 0.25 ? 1 : 0;
+        if (!pLocks.boundaries) layer.params.Lattices.boundaries = Math.random() < 0.5 ? 1 : 0;
+        if (!pLocks.depth_stroke) layer.params.Lattices.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Phyllo random
-        layer.params.Phyllo.count = Math.floor(Math.random() * 50) * 10 + 100;
-        layer.params.Phyllo.div_angle = Math.random() < 0.8 ? parseFloat((137.508 + Math.random() * 0.2 - 0.1).toFixed(3)) : parseFloat((Math.random() * 5 + 135).toFixed(3));
-        layer.params.Phyllo.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
-        layer.params.Phyllo.size = parseFloat((Math.random() * 0.033 + 0.012).toFixed(3));
-        layer.params.Phyllo.decay = parseFloat((Math.random() * 0.6 + 0.2).toFixed(2));
-        layer.params.Phyllo.shape_type = Math.floor(Math.random() * 5);
+        if (!pLocks.count) layer.params.Phyllo.count = Math.floor(Math.random() * 50) * 10 + 100;
+        if (!pLocks.div_angle) layer.params.Phyllo.div_angle = Math.random() < 0.8 ? parseFloat((137.508 + Math.random() * 0.2 - 0.1).toFixed(3)) : parseFloat((Math.random() * 5 + 135).toFixed(3));
+        if (!pLocks.radius) layer.params.Phyllo.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
+        if (!pLocks.size) layer.params.Phyllo.size = parseFloat((Math.random() * 0.033 + 0.012).toFixed(3));
+        if (!pLocks.decay) layer.params.Phyllo.decay = parseFloat((Math.random() * 0.6 + 0.2).toFixed(2));
+        if (!pLocks.shape_type) layer.params.Phyllo.shape_type = Math.floor(Math.random() * 5);
     });
-    
-    target.globalColorShift = parseFloat(Math.random().toFixed(2));
-    target.globalLineWidth = parseFloat((Math.random() * 1.4 + 0.6).toFixed(2));
-    target.paletteIdx = Math.floor(Math.random() * PALETTES.length);
     
     return target;
 }
 
 // Randomizer (Manual Trigger)
 function randomizeDesign() {
+    pushHistoryState();
     turnAutoplayOff();
     const target = getRandomTargetState();
     startTransitionTo(target);
@@ -1547,6 +1518,21 @@ function bindEvents() {
                 }
             });
             
+            // Sync lock indicators for Layer Active and Layer Type
+            const activeLocked = state.locks.layerActive[state.currentLayerIdx];
+            const activeLockBtn = document.getElementById("btn-lock-layer-active");
+            if (activeLockBtn) {
+                activeLockBtn.classList.toggle("locked", activeLocked);
+                activeLockBtn.textContent = activeLocked ? "🔒" : "🔓";
+            }
+            
+            const typeLocked = state.locks.layerType[state.currentLayerIdx];
+            const typeLockBtn = document.getElementById("btn-lock-layer-type");
+            if (typeLockBtn) {
+                typeLockBtn.classList.toggle("locked", typeLocked);
+                typeLockBtn.textContent = typeLocked ? "🔒" : "🔓";
+            }
+            
             rebuildDynamicSliders();
         });
     });
@@ -1575,37 +1561,64 @@ function bindEvents() {
         drawMandalaOnScreen();
     });
     
-    // 4. Palette Selectors
-    document.getElementById("btn-prev-palette").addEventListener("click", () => {
-        pushHistoryState();
-        turnAutoplayOff();
-        state.activePaletteIdx = (state.activePaletteIdx - 1 + PALETTES.length) % PALETTES.length;
-        document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
-        drawMandalaOnScreen();
-    });
-    document.getElementById("btn-next-palette").addEventListener("click", () => {
-        pushHistoryState();
-        turnAutoplayOff();
-        state.activePaletteIdx = (state.activePaletteIdx + 1) % PALETTES.length;
-        document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
-        drawMandalaOnScreen();
+    // 4. Color Palette Segmented Buttons
+    document.querySelectorAll("#control-palette .segment-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            pushHistoryState();
+            turnAutoplayOff();
+            
+            const idx = parseInt(e.target.getAttribute("data-palette-idx"));
+            state.activePaletteIdx = idx;
+            
+            // Update visual active classes
+            document.querySelectorAll("#control-palette .segment-btn").forEach(b => {
+                b.classList.toggle("active", parseInt(b.getAttribute("data-palette-idx")) === idx);
+            });
+            
+            drawMandalaOnScreen();
+        });
     });
     
-    // 5. Presets Selectors
-    document.getElementById("btn-prev-preset").addEventListener("click", () => {
-        pushHistoryState();
-        turnAutoplayOff();
-        state.activePresetIdx = (state.activePresetIdx - 1 + PRESETS.length) % PRESETS.length;
-        document.getElementById("lbl-preset").textContent = PRESETS[state.activePresetIdx].name;
-        loadPreset(PRESETS[state.activePresetIdx]);
+    // 5. Settings Locks Event Listeners (Static elements)
+    document.querySelectorAll(".lock-btn[data-lock]").forEach(btn => {
+        const key = btn.getAttribute("data-lock");
+        
+        // Initial state sync
+        const isLocked = state.locks[key];
+        btn.classList.toggle("locked", isLocked);
+        btn.textContent = isLocked ? "🔒" : "🔓";
+        
+        btn.addEventListener("click", () => {
+            state.locks[key] = !state.locks[key];
+            btn.classList.toggle("locked", state.locks[key]);
+            btn.textContent = state.locks[key] ? "🔒" : "🔓";
+            showToast(`${key.replace(/global/, "Global ")} state ${state.locks[key] ? "Locked 🔒" : "Unlocked 🔓"}`);
+        });
     });
-    document.getElementById("btn-next-preset").addEventListener("click", () => {
-        pushHistoryState();
-        turnAutoplayOff();
-        state.activePresetIdx = (state.activePresetIdx + 1) % PRESETS.length;
-        document.getElementById("lbl-preset").textContent = PRESETS[state.activePresetIdx].name;
-        loadPreset(PRESETS[state.activePresetIdx]);
-    });
+    
+    // Layer active lock click listener
+    const activeLockBtn = document.getElementById("btn-lock-layer-active");
+    if (activeLockBtn) {
+        activeLockBtn.addEventListener("click", () => {
+            const idx = state.currentLayerIdx;
+            state.locks.layerActive[idx] = !state.locks.layerActive[idx];
+            activeLockBtn.classList.toggle("locked", state.locks.layerActive[idx]);
+            activeLockBtn.textContent = state.locks.layerActive[idx] ? "🔒" : "🔓";
+            showToast(`Layer ${idx + 1} active state ${state.locks.layerActive[idx] ? "Locked 🔒" : "Unlocked 🔓"}`);
+        });
+    }
+    
+    // Layer type lock click listener
+    const typeLockBtn = document.getElementById("btn-lock-layer-type");
+    if (typeLockBtn) {
+        typeLockBtn.addEventListener("click", () => {
+            const idx = state.currentLayerIdx;
+            state.locks.layerType[idx] = !state.locks.layerType[idx];
+            typeLockBtn.classList.toggle("locked", state.locks.layerType[idx]);
+            typeLockBtn.textContent = state.locks.layerType[idx] ? "🔒" : "🔓";
+            showToast(`Layer ${idx + 1} type ${state.locks.layerType[idx] ? "Locked 🔒" : "Unlocked 🔓"}`);
+        });
+    }
     
     // 6. Global Sliders
     // Bind start of global slider drags for Undo History
@@ -1730,8 +1743,13 @@ function init() {
     resizeCanvas();
     populateFavoritesDropdown();
     
-    // Load first preset immediately without animation
-    loadPreset(PRESETS[0], false);
+    // Set initial active palette button selection visually
+    document.querySelectorAll("#control-palette .segment-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.getAttribute("data-palette-idx")) === state.activePaletteIdx);
+    });
+    
+    rebuildDynamicSliders();
+    drawMandalaOnScreen();
 }
 
 window.addEventListener("load", init);

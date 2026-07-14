@@ -47,7 +47,8 @@
                         <button class="tab-btn" data-layer="3">Layer 4</button>
                     </div>
                     
-                    <div class="checkbox-row">
+                    <div class="checkbox-row lockable-row">
+                        <button id="btn-lock-layer-active" class="lock-btn" title="Lock Layer Active State">🔓</button>
                         <label class="checkbox-container">
                             <input type="checkbox" id="chk-layer-active" checked>
                             <span class="checkmark"></span>
@@ -55,12 +56,15 @@
                         </label>
                     </div>
                     
-                    <div class="tabs-group secondary" id="type-tabs">
-                        <button class="tab-btn active" data-type="Spirals">Spirals</button>
-                        <button class="tab-btn" data-type="Cobwebs">Cobwebs</button>
-                        <button class="tab-btn" data-type="Tunnels">Tunnels</button>
-                        <button class="tab-btn" data-type="Lattices">Lattices</button>
-                        <button class="tab-btn" data-type="Phyllo">Phyllo</button>
+                    <div class="tabs-row lockable-row">
+                        <button id="btn-lock-layer-type" class="lock-btn" title="Lock Layer Type">🔓</button>
+                        <div class="tabs-group secondary" id="type-tabs" style="flex: 1;">
+                            <button class="tab-btn active" data-type="Spirals">Spirals</button>
+                            <button class="tab-btn" data-type="Cobwebs">Cobwebs</button>
+                            <button class="tab-btn" data-type="Tunnels">Tunnels</button>
+                            <button class="tab-btn" data-type="Lattices">Lattices</button>
+                            <button class="tab-btn" data-type="Phyllo">Phyllo</button>
+                        </div>
                     </div>
                     
                     <!-- Dynamic Layer Sliders Container (Injected by JS) -->
@@ -71,59 +75,66 @@
                 <section class="control-section">
                     <h3 class="section-title">GLOBAL SETTINGS</h3>
                     
-                    <div class="slider-row">
-                        <div class="slider-header">
-                            <span>Global Scale</span>
-                            <span id="val-global-scale">1.00</span>
+                    <div class="slider-row lockable-row">
+                        <button class="lock-btn" data-lock="globalScale" title="Lock Global Scale">🔓</button>
+                        <div class="col">
+                            <div class="slider-header">
+                                <span>Global Scale</span>
+                                <span id="val-global-scale">1.00</span>
+                            </div>
+                            <input type="range" id="slide-global-scale" min="0.2" max="1.8" step="0.01" value="1.0">
                         </div>
-                        <input type="range" id="slide-global-scale" min="0.2" max="1.8" step="0.01" value="1.0">
                     </div>
                     
-                    <div class="slider-row">
-                        <div class="slider-header">
-                            <span>Line Thickness</span>
-                            <span id="val-global-thick">1.50</span>
+                    <div class="slider-row lockable-row">
+                        <button class="lock-btn" data-lock="globalLineWidth" title="Lock Line Thickness">🔓</button>
+                        <div class="col">
+                            <div class="slider-header">
+                                <span>Line Thickness</span>
+                                <span id="val-global-thick">1.50</span>
+                            </div>
+                            <input type="range" id="slide-global-thick" min="0.5" max="7" step="0.1" value="1.5">
                         </div>
-                        <input type="range" id="slide-global-thick" min="0.5" max="7" step="0.1" value="1.5">
                     </div>
                     
-                    <div class="slider-row">
-                        <div class="slider-header">
-                            <span>Color Shift</span>
-                            <span id="val-global-shift">0.00</span>
+                    <div class="slider-row lockable-row">
+                        <button class="lock-btn" data-lock="globalColorShift" title="Lock Color Shift">🔓</button>
+                        <div class="col">
+                            <div class="slider-header">
+                                <span>Color Shift</span>
+                                <span id="val-global-shift">0.00</span>
+                            </div>
+                            <input type="range" id="slide-global-shift" min="0" max="1" step="0.01" value="0.0">
                         </div>
-                        <input type="range" id="slide-global-shift" min="0" max="1" step="0.01" value="0.0">
                     </div>
                     
-                    <div class="slider-row">
-                        <div class="slider-header">
-                            <span>Global Rotation</span>
-                            <span id="val-global-rot">0°</span>
+                    <div class="slider-row lockable-row">
+                        <button class="lock-btn" data-lock="globalRotation" title="Lock Global Rotation">🔓</button>
+                        <div class="col">
+                            <div class="slider-header">
+                                <span>Global Rotation</span>
+                                <span id="val-global-rot">0°</span>
+                            </div>
+                            <input type="range" id="slide-global-rot" min="0" max="360" step="1" value="0">
                         </div>
-                        <input type="range" id="slide-global-rot" min="0" max="360" step="1" value="0">
                     </div>
                 </section>
 
                 <!-- Section 1: Presets & Colors -->
                 <section class="control-section">
-                    <div class="row">
-                        <div class="col">
-                            <label>Preset Template</label>
-                            <div class="selector-arrows">
-                                <button id="btn-prev-preset" class="arrow-btn">&lt;</button>
-                                <span id="lbl-preset" class="select-label">Hypnagogic Tunnel</span>
-                                <button id="btn-next-preset" class="arrow-btn">&gt;</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
+                    <div class="row lockable-row">
+                        <button class="lock-btn" data-lock="palette" title="Lock Color Palette">🔓</button>
                         <div class="col">
                             <label>Color Palette</label>
-                            <div class="selector-arrows">
-                                <button id="btn-prev-palette" class="arrow-btn">&lt;</button>
-                                <span id="lbl-palette" class="select-label">Neon Cyberpunk</span>
-                                <button id="btn-next-palette" class="arrow-btn">&gt;</button>
+                            <div id="control-palette" class="segmented-control palette-grid">
+                                <button class="segment-btn active" data-palette-idx="0">Cyber</button>
+                                <button class="segment-btn" data-palette-idx="1">Gold</button>
+                                <button class="segment-btn" data-palette-idx="2">Aurora</button>
+                                <button class="segment-btn" data-palette-idx="3">Sage</button>
+                                <button class="segment-btn" data-palette-idx="4">Lava</button>
+                                <button class="segment-btn" data-palette-idx="5">Ocean</button>
+                                <button class="segment-btn" data-palette-idx="6">Prism</button>
+                                <button class="segment-btn" data-palette-idx="7">Dream</button>
                             </div>
                         </div>
                     </div>
@@ -178,7 +189,7 @@
     </div>
     
     <!-- Code Script -->
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
