@@ -810,7 +810,7 @@ function rebuildDynamicSliders() {
             {key: "wave_amp", label: "Wave Amplitude", min: 0.0, max: 0.15, step: 0.002},
             {key: "wave_freq", label: "Wave Frequency", min: 0.0, max: 20.0, step: 0.1},
             {key: "radius", label: "Max Radius", min: 0.1, max: 1.0, step: 0.01},
-            {key: "depth_stroke", label: "Depth Stroke (0:No, 1:Yes)", min: 0, max: 1, step: 1, isInt: true}
+            {key: "depth_stroke", label: "Depth Stroke", min: 0, max: 1, step: 1, isInt: true, options: ["No", "Yes"]}
         ],
         "Cobwebs": [
             {key: "count", label: "Spoke Count", min: 3, max: 48, step: 1, isInt: true},
@@ -819,7 +819,7 @@ function rebuildDynamicSliders() {
             {key: "sag", label: "Web Sag Factor", min: -0.4, max: 0.6, step: 0.02},
             {key: "radius", label: "Max Radius", min: 0.1, max: 1.0, step: 0.01},
             {key: "thickness", label: "Line Thickness", min: 1.0, max: 10.0, step: 0.5},
-            {key: "depth_stroke", label: "Depth Stroke (0:No, 1:Yes)", min: 0, max: 1, step: 1, isInt: true}
+            {key: "depth_stroke", label: "Depth Stroke", min: 0, max: 1, step: 1, isInt: true, options: ["No", "Yes"]}
         ],
         "Tunnels": [
             {key: "rings", label: "Depth Rings", min: 3, max: 50, step: 1, isInt: true},
@@ -828,17 +828,17 @@ function rebuildDynamicSliders() {
             {key: "twist", label: "Vortex Twist", min: -5.0, max: 5.0, step: 0.1},
             {key: "wobble", label: "Tunnel Wobble", min: 0.0, max: 0.3, step: 0.005},
             {key: "radius", label: "Max Radius", min: 0.1, max: 1.0, step: 0.01},
-            {key: "depth_stroke", label: "Depth Stroke (0:No, 1:Yes)", min: 0, max: 1, step: 1, isInt: true}
+            {key: "depth_stroke", label: "Depth Stroke", min: 0, max: 1, step: 1, isInt: true, options: ["No", "Yes"]}
         ],
         "Lattices": [
-            {key: "grid_type", label: "Style (0:Sqr, 1:Tri, 2:Hex, 3:LogHex)", min: 0, max: 3, step: 1, isInt: true},
+            {key: "grid_type", label: "Style", min: 0, max: 3, step: 1, isInt: true, options: ["Square", "Tri", "Hex", "LogHex"]},
             {key: "cell_scale", label: "Cell Size", min: 0.03, max: 0.25, step: 0.005},
             {key: "rotation", label: "Grid Rotation", min: 0, max: 360, step: 1, isInt: true},
             {key: "thickness", label: "Line Thickness", min: 1.0, max: 10.0, step: 0.5},
             {key: "radius", label: "Clipping Radius", min: 0.1, max: 1.0, step: 0.01},
-            {key: "double_grid", label: "Double Grid (0:No, 1:Yes)", min: 0, max: 1, step: 1, isInt: true},
-            {key: "boundaries", label: "Show (0:Shapes, 1:Boundaries)", min: 0, max: 1, step: 1, isInt: true},
-            {key: "depth_stroke", label: "Depth Stroke (0:No, 1:Yes)", min: 0, max: 1, step: 1, isInt: true}
+            {key: "double_grid", label: "Double Grid", min: 0, max: 1, step: 1, isInt: true, options: ["No", "Yes"]},
+            {key: "boundaries", label: "Show Mode", min: 0, max: 1, step: 1, isInt: true, options: ["Shapes", "Boundaries"]},
+            {key: "depth_stroke", label: "Depth Stroke", min: 0, max: 1, step: 1, isInt: true, options: ["No", "Yes"]}
         ],
         "Phyllo": [
             {key: "count", label: "Scale Count", min: 10, max: 1000, step: 10, isInt: true},
@@ -846,13 +846,13 @@ function rebuildDynamicSliders() {
             {key: "radius", label: "Max Radius", min: 0.1, max: 1.0, step: 0.01},
             {key: "size", label: "Scale Size", min: 0.005, max: 0.08, step: 0.001},
             {key: "decay", label: "Size Scaling (Outward)", min: 0.0, max: 1.0, step: 0.05},
-            {key: "shape_type", label: "Type (0:Cir,1:Tri,2:Sqr,3:Str,4:Ptl)", min: 0, max: 4, step: 1, isInt: true}
+            {key: "shape_type", label: "Scale Shape", min: 0, max: 4, step: 1, isInt: true, options: ["Circle", "Tri", "Sqr", "Star", "Petal"]}
         ]
     };
     
     const activeDefs = sliderDefs[layer.type] || [];
     
-    // 1. Inject Dynamic Sliders
+    // 1. Inject Dynamic Sliders / Controls
     activeDefs.forEach(def => {
         const row = document.createElement("div");
         row.className = "slider-row";
@@ -863,29 +863,56 @@ function rebuildDynamicSliders() {
         const labelSpan = document.createElement("span");
         labelSpan.textContent = def.label;
         header.appendChild(labelSpan);
-        
-        const valSpan = document.createElement("span");
-        const currVal = p[def.key];
-        valSpan.textContent = def.key === "div_angle" ? currVal.toFixed(3) + "°" : (def.isInt ? parseInt(currVal) : currVal.toFixed(2));
-        header.appendChild(valSpan);
-        
-        const input = document.createElement("input");
-        input.type = "range";
-        input.min = def.min;
-        input.max = def.max;
-        input.step = def.step;
-        input.value = currVal;
-        
-        input.addEventListener("input", (e) => {
-            let val = parseFloat(e.target.value);
-            if (def.isInt) val = Math.round(val);
-            p[def.key] = val;
-            valSpan.textContent = def.key === "div_angle" ? val.toFixed(3) + "°" : (def.isInt ? parseInt(val) : val.toFixed(2));
-            drawMandalaOnScreen();
-        });
-        
         row.appendChild(header);
-        row.appendChild(input);
+        
+        if (def.options) {
+            // Segmented button group for discrete values
+            const group = document.createElement("div");
+            group.className = "segmented-control";
+            
+            def.options.forEach((optText, optIdx) => {
+                const btn = document.createElement("button");
+                btn.className = "segment-btn" + (Math.round(p[def.key]) === optIdx ? " active" : "");
+                btn.textContent = optText;
+                btn.addEventListener("click", () => {
+                    // Update visual state of buttons in this group
+                    group.querySelectorAll(".segment-btn").forEach((b, idx) => {
+                        b.classList.toggle("active", idx === optIdx);
+                    });
+                    
+                    // Update state & render
+                    p[def.key] = optIdx;
+                    drawMandalaOnScreen();
+                });
+                group.appendChild(btn);
+            });
+            
+            row.appendChild(group);
+        } else {
+            // Standard range slider for continuous values
+            const valSpan = document.createElement("span");
+            const currVal = p[def.key];
+            valSpan.textContent = def.key === "div_angle" ? currVal.toFixed(3) + "°" : (def.isInt ? parseInt(currVal) : currVal.toFixed(2));
+            header.appendChild(valSpan);
+            
+            const input = document.createElement("input");
+            input.type = "range";
+            input.min = def.min;
+            input.max = def.max;
+            input.step = def.step;
+            input.value = currVal;
+            
+            input.addEventListener("input", (e) => {
+                let val = parseFloat(e.target.value);
+                if (def.isInt) val = Math.round(val);
+                p[def.key] = val;
+                valSpan.textContent = def.key === "div_angle" ? val.toFixed(3) + "°" : (def.isInt ? parseInt(val) : val.toFixed(2));
+                drawMandalaOnScreen();
+            });
+            
+            row.appendChild(input);
+        }
+        
         container.appendChild(row);
     });
     
@@ -916,45 +943,263 @@ function rebuildDynamicSliders() {
     container.appendChild(colRow);
 }
 
-// Preset Loader
-function loadPreset(preset) {
-    state.activePaletteIdx = PALETTES.indexOf(preset.palette);
-    document.getElementById("lbl-palette").textContent = preset.palette;
+// Global Animation Controller for Transitions
+const animationController = {
+    isAnimating: false,
+    startTime: 0,
+    duration: 1200, // milliseconds
+    startState: null,
+    targetState: null,
+    rafId: null,
+    ease: (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2 // easeInOutCubic
+};
+
+// Capture complete visual parameters snapshot
+function captureCurrentStateSnapshot() {
+    return {
+        paletteIdx: state.activePaletteIdx,
+        globalRotation: state.globalRotation,
+        globalLineWidth: state.globalLineWidth,
+        globalColorShift: state.globalColorShift,
+        layers: state.layers.map(l => {
+            const layerParams = {};
+            for (let t in l.params) {
+                layerParams[t] = JSON.parse(JSON.stringify(l.params[t]));
+            }
+            return {
+                type: l.type,
+                active: l.active,
+                color_offset: l.color_offset,
+                params: layerParams
+            };
+        })
+    };
+}
+
+// Serialize current state for saving favorites
+function getSerializedState() {
+    return {
+        paletteName: PALETTES[state.activePaletteIdx],
+        globalRotation: state.globalRotation,
+        globalLineWidth: state.globalLineWidth,
+        globalColorShift: state.globalColorShift,
+        layers: state.layers.map(l => ({
+            type: l.type,
+            active: l.active,
+            color_offset: l.color_offset,
+            params: JSON.parse(JSON.stringify(l.params[l.type]))
+        }))
+    };
+}
+
+// Start smooth animation transition to a target state
+function startTransitionTo(targetState) {
+    if (animationController.rafId) {
+        cancelAnimationFrame(animationController.rafId);
+    }
+    animationController.startState = captureCurrentStateSnapshot();
+    animationController.targetState = targetState;
+    animationController.startTime = performance.now();
+    animationController.isAnimating = true;
+    animationController.rafId = requestAnimationFrame(animateTransitionStep);
+}
+
+// Single step of transition interpolation loop
+function animateTransitionStep(timestamp) {
+    if (!animationController.isAnimating) return;
+    
+    const elapsed = timestamp - animationController.startTime;
+    let t = Math.min(elapsed / animationController.duration, 1.0);
+    
+    const easedT = animationController.ease(t);
+    const start = animationController.startState;
+    const target = animationController.targetState;
+    
+    // Interpolate Globals
+    state.globalRotation = start.globalRotation + (target.globalRotation - start.globalRotation) * easedT;
+    state.globalLineWidth = start.globalLineWidth + (target.globalLineWidth - start.globalLineWidth) * easedT;
+    state.globalColorShift = start.globalColorShift + (target.globalColorShift - start.globalColorShift) * easedT;
+    
+    // Update global visual indicators
+    const thickSlider = document.getElementById("slide-global-thick");
+    if (thickSlider) {
+        thickSlider.value = state.globalLineWidth;
+        document.getElementById("val-global-thick").textContent = state.globalLineWidth.toFixed(2);
+    }
+    const shiftSlider = document.getElementById("slide-global-shift");
+    if (shiftSlider) {
+        shiftSlider.value = state.globalColorShift;
+        document.getElementById("val-global-shift").textContent = state.globalColorShift.toFixed(2);
+    }
+    const rotSlider = document.getElementById("slide-global-rot");
+    if (rotSlider) {
+        rotSlider.value = Math.round(state.globalRotation);
+        document.getElementById("val-global-rot").textContent = Math.round(state.globalRotation) + "°";
+    }
+    
+    // Palette shifts at midpoint
+    state.activePaletteIdx = t >= 0.5 ? target.paletteIdx : start.paletteIdx;
+    document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
+    
+    // Interpolate Layers
+    for (let i = 0; i < 4; i++) {
+        const sL = start.layers[i];
+        const tL = target.layers[i];
+        const curL = state.layers[i];
+        
+        if (t >= 0.5) {
+            curL.active = tL.active;
+            curL.type = tL.type;
+        } else {
+            curL.active = sL.active;
+            curL.type = sL.type;
+        }
+        
+        curL.color_offset = sL.color_offset + (tL.color_offset - sL.color_offset) * easedT;
+        
+        for (let type in curL.params) {
+            const sParams = sL.params[type];
+            const tParams = tL.params[type];
+            const curParams = curL.params[type];
+            
+            for (let key in curParams) {
+                const startVal = sParams[key];
+                const targetVal = tParams[key];
+                
+                const discreteKeys = {
+                    "Spirals": ["depth_stroke"],
+                    "Cobwebs": ["depth_stroke"],
+                    "Tunnels": ["depth_stroke"],
+                    "Lattices": ["grid_type", "double_grid", "boundaries", "depth_stroke"],
+                    "Phyllo": ["shape_type"]
+                };
+                
+                const isDiscrete = discreteKeys[type] && discreteKeys[type].includes(key);
+                
+                if (isDiscrete) {
+                    curParams[key] = t >= 0.5 ? targetVal : startVal;
+                } else {
+                    curParams[key] = startVal + (targetVal - startVal) * easedT;
+                }
+            }
+        }
+    }
+    
+    // UI active checks & tabs
+    document.getElementById("chk-layer-active").checked = state.layers[state.currentLayerIdx].active;
+    
+    // Redraw
+    drawMandalaOnScreen();
+    
+    if (t < 1.0) {
+        animationController.rafId = requestAnimationFrame(animateTransitionStep);
+    } else {
+        animationController.isAnimating = false;
+        
+        // Sync panel tabs representation without triggering click event loops
+        const activeLayer = state.layers[state.currentLayerIdx];
+        document.querySelectorAll("#layer-tabs .tab-btn").forEach((btn, idx) => {
+            btn.classList.toggle("active", idx === state.currentLayerIdx);
+        });
+        document.querySelectorAll("#type-tabs .tab-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.type === activeLayer.type);
+        });
+        
+        rebuildDynamicSliders();
+    }
+}
+
+// Convert template preset config into visual target state
+function makeTargetStateFromPreset(preset) {
+    const target = captureCurrentStateSnapshot();
+    
+    const palIdx = PALETTES.indexOf(preset.palette);
+    if (palIdx !== -1) target.paletteIdx = palIdx;
     
     preset.layers.forEach((plyr, idx) => {
-        const layer = state.layers[idx];
-        layer.type = plyr.type;
-        layer.active = plyr.active;
-        layer.color_offset = plyr.col_off;
-        
-        // Copy parameters
+        const targetLayer = target.layers[idx];
+        targetLayer.type = plyr.type;
+        targetLayer.active = plyr.active;
+        targetLayer.color_offset = plyr.col_off;
         for (let k in plyr.params) {
-            layer.params[layer.type][k] = plyr.params[k];
+            targetLayer.params[plyr.type][k] = plyr.params[k];
         }
     });
     
-    // Update layer active checkmark
-    document.getElementById("chk-layer-active").checked = state.layers[state.currentLayerIdx].active;
+    return target;
+}
+
+// Convert favorite config into visual target state
+function makeTargetStateFromFav(fav) {
+    const target = captureCurrentStateSnapshot();
     
-    // Re-active tabs in UI
-    const activeLayer = state.layers[state.currentLayerIdx];
-    document.querySelector(`#layer-tabs [data-layer="${state.currentLayerIdx}"]`).click();
-    document.querySelector(`#type-tabs [data-type="${activeLayer.type}"]`).click();
+    const palIdx = PALETTES.indexOf(fav.paletteName);
+    if (palIdx !== -1) target.paletteIdx = palIdx;
     
-    rebuildDynamicSliders();
-    drawMandalaOnScreen();
+    target.globalRotation = fav.globalRotation ?? 0;
+    target.globalLineWidth = fav.globalLineWidth ?? 1.5;
+    target.globalColorShift = fav.globalColorShift ?? 0.0;
+    
+    fav.layers.forEach((fL, idx) => {
+        const tL = target.layers[idx];
+        tL.type = fL.type;
+        tL.active = fL.active;
+        tL.color_offset = fL.color_offset;
+        for (let k in fL.params) {
+            tL.params[fL.type][k] = fL.params[k];
+        }
+    });
+    
+    return target;
+}
+
+// Preset Loader
+function loadPreset(preset, animate = true) {
+    const targetState = makeTargetStateFromPreset(preset);
+    
+    if (animate) {
+        startTransitionTo(targetState);
+    } else {
+        state.activePaletteIdx = targetState.paletteIdx;
+        document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
+        
+        preset.layers.forEach((plyr, idx) => {
+            const layer = state.layers[idx];
+            layer.type = plyr.type;
+            layer.active = plyr.active;
+            layer.color_offset = plyr.col_off;
+            for (let k in plyr.params) {
+                layer.params[layer.type][k] = plyr.params[k];
+            }
+        });
+        
+        document.getElementById("chk-layer-active").checked = state.layers[state.currentLayerIdx].active;
+        
+        const activeLayer = state.layers[state.currentLayerIdx];
+        document.querySelectorAll("#layer-tabs .tab-btn").forEach((btn, idx) => {
+            btn.classList.toggle("active", idx === state.currentLayerIdx);
+        });
+        document.querySelectorAll("#type-tabs .tab-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.type === activeLayer.type);
+        });
+        
+        rebuildDynamicSliders();
+        drawMandalaOnScreen();
+    }
 }
 
 // Randomizer
 function randomizeDesign() {
-    state.layers[0].active = true;
+    const target = captureCurrentStateSnapshot();
+    
+    target.layers[0].active = true;
     for (let i = 1; i < 4; i++) {
-        state.layers[i].active = Math.random() < 0.65;
+        target.layers[i].active = Math.random() < 0.65;
     }
     
     const types = ["Spirals", "Cobwebs", "Tunnels", "Lattices", "Phyllo"];
     
-    state.layers.forEach(layer => {
+    target.layers.forEach(layer => {
         layer.type = types[Math.floor(Math.random() * types.length)];
         layer.color_offset = Math.random();
         
@@ -965,6 +1210,7 @@ function randomizeDesign() {
         layer.params.Spirals.wave_amp = Math.random() < 0.6 ? parseFloat((Math.random() * 0.08).toFixed(3)) : 0.0;
         layer.params.Spirals.wave_freq = parseFloat((Math.random() * 10 + 2).toFixed(1));
         layer.params.Spirals.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
+        layer.params.Spirals.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Cobwebs random
         layer.params.Cobwebs.count = Math.floor(Math.random() * 20) + 4;
@@ -972,7 +1218,8 @@ function randomizeDesign() {
         layer.params.Cobwebs.spacing = parseFloat((Math.random() * 1.1 + 0.7).toFixed(2));
         layer.params.Cobwebs.sag = parseFloat((Math.random() * 0.6 - 0.15).toFixed(2));
         layer.params.Cobwebs.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
-        layer.params.Cobwebs.thickness = parseFloat((Math.random() * 1.7 + 0.8).toFixed(1)); // finer range: 0.8 to 2.5
+        layer.params.Cobwebs.thickness = parseFloat((Math.random() * 1.7 + 0.8).toFixed(1));
+        layer.params.Cobwebs.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Tunnels random
         layer.params.Tunnels.rings = Math.floor(Math.random() * 25) + 5;
@@ -981,14 +1228,17 @@ function randomizeDesign() {
         layer.params.Tunnels.twist = Math.random() < 0.6 ? parseFloat((Math.random() * 5 - 2.5).toFixed(1)) : 0.0;
         layer.params.Tunnels.wobble = Math.random() < 0.5 ? parseFloat((Math.random() * 0.15).toFixed(3)) : 0.0;
         layer.params.Tunnels.radius = parseFloat((Math.random() * 0.45 + 0.5).toFixed(2));
+        layer.params.Tunnels.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Lattices random
-        layer.params.Lattices.grid_type = Math.floor(Math.random() * 3);
+        layer.params.Lattices.grid_type = Math.floor(Math.random() * 4); // covers LogHex (Style 3)
         layer.params.Lattices.cell_scale = parseFloat((Math.random() * 0.11 + 0.05).toFixed(3));
         layer.params.Lattices.rotation = Math.floor(Math.random() * 180);
-        layer.params.Lattices.thickness = parseFloat((Math.random() * 1.4 + 0.8).toFixed(1)); // finer range: 0.8 to 2.2
+        layer.params.Lattices.thickness = parseFloat((Math.random() * 1.4 + 0.8).toFixed(1));
         layer.params.Lattices.radius = parseFloat((Math.random() * 0.55 + 0.4).toFixed(2));
         layer.params.Lattices.double_grid = Math.random() < 0.25 ? 1 : 0;
+        layer.params.Lattices.boundaries = Math.random() < 0.5 ? 1 : 0;
+        layer.params.Lattices.depth_stroke = Math.random() < 0.5 ? 1 : 0;
         
         // Phyllo random
         layer.params.Phyllo.count = Math.floor(Math.random() * 50) * 10 + 100;
@@ -999,26 +1249,100 @@ function randomizeDesign() {
         layer.params.Phyllo.shape_type = Math.floor(Math.random() * 5);
     });
     
-    state.globalColorShift = parseFloat(Math.random().toFixed(2));
-    state.globalLineWidth = parseFloat((Math.random() * 1.4 + 0.6).toFixed(2)); // randomize thickness: 0.6 to 2.0
-    state.activePaletteIdx = Math.floor(Math.random() * PALETTES.length);
+    target.globalColorShift = parseFloat(Math.random().toFixed(2));
+    target.globalLineWidth = parseFloat((Math.random() * 1.4 + 0.6).toFixed(2));
+    target.paletteIdx = Math.floor(Math.random() * PALETTES.length);
     
-    document.getElementById("slide-global-shift").value = state.globalColorShift;
-    document.getElementById("val-global-shift").textContent = state.globalColorShift.toFixed(2);
+    startTransitionTo(target);
+}
+
+// Local Storage Favorites Persistence
+function getFavorites() {
+    const raw = localStorage.getItem("form_constants_favorites");
+    if (!raw) return {};
+    try {
+        return JSON.parse(raw);
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveFavorites(favorites) {
+    localStorage.setItem("form_constants_favorites", JSON.stringify(favorites));
+    populateFavoritesDropdown();
+}
+
+function populateFavoritesDropdown() {
+    const select = document.getElementById("select-favorites");
+    if (!select) return;
+    select.innerHTML = "";
     
-    document.getElementById("slide-global-thick").value = state.globalLineWidth;
-    document.getElementById("val-global-thick").textContent = state.globalLineWidth.toFixed(2);
+    const favorites = getFavorites();
+    const keys = Object.keys(favorites);
     
-    document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
+    if (keys.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.disabled = true;
+        opt.selected = true;
+        opt.textContent = "No saved favorites";
+        select.appendChild(opt);
+        document.getElementById("btn-delete-favorite").disabled = true;
+    } else {
+        const optPlaceholder = document.createElement("option");
+        optPlaceholder.value = "";
+        optPlaceholder.disabled = true;
+        optPlaceholder.selected = true;
+        optPlaceholder.textContent = "-- Select a favorite --";
+        select.appendChild(optPlaceholder);
+        
+        keys.forEach(name => {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        });
+        document.getElementById("btn-delete-favorite").disabled = false;
+    }
+}
+
+function handleSaveFavorite() {
+    const name = prompt("Enter a name for your favorite configuration:", `Favorite #${Object.keys(getFavorites()).length + 1}`);
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
     
-    document.getElementById("chk-layer-active").checked = state.layers[state.currentLayerIdx].active;
+    const favorites = getFavorites();
+    favorites[trimmed] = getSerializedState();
+    saveFavorites(favorites);
     
-    // Force active layer tabs representation in UI
-    const activeLayer = state.layers[state.currentLayerIdx];
-    document.querySelector(`#type-tabs [data-type="${activeLayer.type}"]`).click();
+    document.getElementById("select-favorites").value = trimmed;
+    showToast(`Saved "${trimmed}" to Favorites!`);
+}
+
+function handleDeleteFavorite() {
+    const select = document.getElementById("select-favorites");
+    const name = select.value;
+    if (!name) return;
     
-    rebuildDynamicSliders();
-    drawMandalaOnScreen();
+    if (confirm(`Delete favorite "${name}"?`)) {
+        const favorites = getFavorites();
+        delete favorites[name];
+        saveFavorites(favorites);
+        showToast(`Deleted "${name}"`);
+    }
+}
+
+function handleSelectFavoriteChange(e) {
+    const name = e.target.value;
+    if (!name) return;
+    
+    const favorites = getFavorites();
+    const fav = favorites[name];
+    if (!fav) return;
+    
+    startTransitionTo(makeTargetStateFromFav(fav));
+    showToast(`Loaded "${name}"`);
 }
 
 // Success Toast Notification Trigger
@@ -1173,6 +1497,11 @@ function bindEvents() {
     document.getElementById("btn-export-trans").addEventListener("click", () => exportDesign(false));
     document.getElementById("btn-export-dark").addEventListener("click", () => exportDesign(true));
     
+    // 7.5 Favorites Commands
+    document.getElementById("btn-save-favorite").addEventListener("click", handleSaveFavorite);
+    document.getElementById("btn-delete-favorite").addEventListener("click", handleDeleteFavorite);
+    document.getElementById("select-favorites").addEventListener("change", handleSelectFavoriteChange);
+    
     // 8. Mobile Sliding Panel Bottom Sheet Gesture/Click events
     const dragHandle = document.getElementById("drag-handle");
     const panelHeader = document.getElementById("panel-header");
@@ -1214,9 +1543,10 @@ function bindEvents() {
 function init() {
     bindEvents();
     resizeCanvas();
+    populateFavoritesDropdown();
     
-    // Load first preset
-    loadPreset(PRESETS[0]);
+    // Load first preset immediately without animation
+    loadPreset(PRESETS[0], false);
 }
 
 window.addEventListener("load", init);
