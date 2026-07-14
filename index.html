@@ -47,7 +47,7 @@
                         <button class="tab-btn" data-layer="3">Layer 4</button>
                     </div>
                     
-                    <div class="checkbox-row lockable-row">
+                    <div class="checkbox-row lock-input-group">
                         <button id="btn-lock-layer-active" class="lock-btn" title="Lock Layer Active State">🔓</button>
                         <label class="checkbox-container">
                             <input type="checkbox" id="chk-layer-active" checked>
@@ -56,14 +56,16 @@
                         </label>
                     </div>
                     
-                    <div class="tabs-row lockable-row">
-                        <button id="btn-lock-layer-type" class="lock-btn" title="Lock Layer Type">🔓</button>
-                        <div class="tabs-group secondary" id="type-tabs" style="flex: 1;">
-                            <button class="tab-btn active" data-type="Spirals">Spirals</button>
-                            <button class="tab-btn" data-type="Cobwebs">Cobwebs</button>
-                            <button class="tab-btn" data-type="Tunnels">Tunnels</button>
-                            <button class="tab-btn" data-type="Lattices">Lattices</button>
-                            <button class="tab-btn" data-type="Phyllo">Phyllo</button>
+                    <div class="tabs-row">
+                        <div class="lock-input-group">
+                            <button id="btn-lock-layer-type" class="lock-btn" title="Lock Layer Type">🔓</button>
+                            <div class="tabs-group secondary" id="type-tabs" style="flex: 1;">
+                                <button class="tab-btn active" data-type="Spirals">Spirals</button>
+                                <button class="tab-btn" data-type="Cobwebs">Cobwebs</button>
+                                <button class="tab-btn" data-type="Tunnels">Tunnels</button>
+                                <button class="tab-btn" data-type="Lattices">Lattices</button>
+                                <button class="tab-btn" data-type="Phyllo">Phyllo</button>
+                            </div>
                         </div>
                     </div>
                     
@@ -75,46 +77,46 @@
                 <section class="control-section">
                     <h3 class="section-title">GLOBAL SETTINGS</h3>
                     
-                    <div class="slider-row lockable-row">
-                        <button class="lock-btn" data-lock="globalScale" title="Lock Global Scale">🔓</button>
-                        <div class="col">
-                            <div class="slider-header">
-                                <span>Global Scale</span>
-                                <span id="val-global-scale">1.00</span>
-                            </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Global Scale</span>
+                            <span id="val-global-scale">1.00</span>
+                        </div>
+                        <div class="lock-input-group">
+                            <button class="lock-btn" data-lock="globalScale" title="Lock Global Scale">🔓</button>
                             <input type="range" id="slide-global-scale" min="0.2" max="1.8" step="0.01" value="1.0">
                         </div>
                     </div>
                     
-                    <div class="slider-row lockable-row">
-                        <button class="lock-btn" data-lock="globalLineWidth" title="Lock Line Thickness">🔓</button>
-                        <div class="col">
-                            <div class="slider-header">
-                                <span>Line Thickness</span>
-                                <span id="val-global-thick">1.50</span>
-                            </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Line Thickness</span>
+                            <span id="val-global-thick">1.50</span>
+                        </div>
+                        <div class="lock-input-group">
+                            <button class="lock-btn" data-lock="globalLineWidth" title="Lock Line Thickness">🔓</button>
                             <input type="range" id="slide-global-thick" min="0.5" max="7" step="0.1" value="1.5">
                         </div>
                     </div>
                     
-                    <div class="slider-row lockable-row">
-                        <button class="lock-btn" data-lock="globalColorShift" title="Lock Color Shift">🔓</button>
-                        <div class="col">
-                            <div class="slider-header">
-                                <span>Color Shift</span>
-                                <span id="val-global-shift">0.00</span>
-                            </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Color Shift</span>
+                            <span id="val-global-shift">0.00</span>
+                        </div>
+                        <div class="lock-input-group">
+                            <button class="lock-btn" data-lock="globalColorShift" title="Lock Color Shift">🔓</button>
                             <input type="range" id="slide-global-shift" min="0" max="1" step="0.01" value="0.0">
                         </div>
                     </div>
                     
-                    <div class="slider-row lockable-row">
-                        <button class="lock-btn" data-lock="globalRotation" title="Lock Global Rotation">🔓</button>
-                        <div class="col">
-                            <div class="slider-header">
-                                <span>Global Rotation</span>
-                                <span id="val-global-rot">0°</span>
-                            </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Global Rotation</span>
+                            <span id="val-global-rot">0°</span>
+                        </div>
+                        <div class="lock-input-group">
+                            <button class="lock-btn" data-lock="globalRotation" title="Lock Global Rotation">🔓</button>
                             <input type="range" id="slide-global-rot" min="0" max="360" step="1" value="0">
                         </div>
                     </div>
@@ -122,11 +124,11 @@
 
                 <!-- Section 1: Presets & Colors -->
                 <section class="control-section">
-                    <div class="row lockable-row">
-                        <button class="lock-btn" data-lock="palette" title="Lock Color Palette">🔓</button>
-                        <div class="col">
-                            <label>Color Palette</label>
-                            <div id="control-palette" class="segmented-control palette-grid">
+                    <div class="row">
+                        <label>Color Palette</label>
+                        <div class="lock-input-group">
+                            <button class="lock-btn" data-lock="palette" title="Lock Color Palette">🔓</button>
+                            <div id="control-palette" class="segmented-control palette-grid" style="flex: 1;">
                                 <button class="segment-btn active" data-palette-idx="0">Cyber</button>
                                 <button class="segment-btn" data-palette-idx="1">Gold</button>
                                 <button class="segment-btn" data-palette-idx="2">Aurora</button>
@@ -189,7 +191,7 @@
     </div>
     
     <!-- Code Script -->
-    <script src="app.js?v=8"></script>
+    <script src="app.js?v=9"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>

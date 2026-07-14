@@ -825,7 +825,19 @@ function rebuildDynamicSliders() {
     // 1. Inject Dynamic Sliders / Controls
     activeDefs.forEach(def => {
         const row = document.createElement("div");
-        row.className = "slider-row lockable-row";
+        row.className = "slider-row";
+        
+        const header = document.createElement("div");
+        header.className = "slider-header";
+        
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = def.label;
+        header.appendChild(labelSpan);
+        row.appendChild(header);
+        
+        // Lock Input Group Container (holds Lock button + Control element side-by-side)
+        const inputGroup = document.createElement("div");
+        inputGroup.className = "lock-input-group";
         
         // Add lock button
         const lockBtn = document.createElement("button");
@@ -840,23 +852,13 @@ function rebuildDynamicSliders() {
             lockBtn.classList.toggle("locked", locks[def.key]);
             lockBtn.textContent = locks[def.key] ? "🔒" : "🔓";
         });
-        row.appendChild(lockBtn);
-        
-        const col = document.createElement("div");
-        col.className = "col";
-        
-        const header = document.createElement("div");
-        header.className = "slider-header";
-        
-        const labelSpan = document.createElement("span");
-        labelSpan.textContent = def.label;
-        header.appendChild(labelSpan);
-        col.appendChild(header);
+        inputGroup.appendChild(lockBtn);
         
         if (def.options) {
             // Segmented button group for discrete values
             const group = document.createElement("div");
             group.className = "segmented-control";
+            group.style.flex = "1";
             
             def.options.forEach((optText, optIdx) => {
                 const btn = document.createElement("button");
@@ -877,7 +879,7 @@ function rebuildDynamicSliders() {
                 group.appendChild(btn);
             });
             
-            col.appendChild(group);
+            inputGroup.appendChild(group);
         } else {
             // Standard range slider for continuous values
             const valSpan = document.createElement("span");
@@ -891,6 +893,7 @@ function rebuildDynamicSliders() {
             input.max = def.max;
             input.step = def.step;
             input.value = currVal;
+            input.style.flex = "1";
             
             input.addEventListener("mousedown", () => {
                 pushHistoryState();
@@ -908,16 +911,25 @@ function rebuildDynamicSliders() {
                 drawMandalaOnScreen();
             });
             
-            col.appendChild(input);
+            inputGroup.appendChild(input);
         }
         
-        row.appendChild(col);
+        row.appendChild(inputGroup);
         container.appendChild(row);
     });
     
     // 2. Inject Color Offset Slider for this Layer
     const colRow = document.createElement("div");
-    colRow.className = "slider-row lockable-row";
+    colRow.className = "slider-row";
+    
+    const colHeader = document.createElement("div");
+    colHeader.className = "slider-header";
+    colHeader.innerHTML = `<span>Layer Color Offset</span><span>${layer.color_offset.toFixed(2)}</span>`;
+    colRow.appendChild(colHeader);
+    
+    // Lock Input Group for Color Offset
+    const colInputGroup = document.createElement("div");
+    colInputGroup.className = "lock-input-group";
     
     // Add lock button
     const colLockBtn = document.createElement("button");
@@ -931,14 +943,7 @@ function rebuildDynamicSliders() {
         colLockBtn.classList.toggle("locked", state.locks.layerColorOffset[state.currentLayerIdx]);
         colLockBtn.textContent = state.locks.layerColorOffset[state.currentLayerIdx] ? "🔒" : "🔓";
     });
-    colRow.appendChild(colLockBtn);
-    
-    const offsetCol = document.createElement("div");
-    offsetCol.className = "col";
-    
-    const colHeader = document.createElement("div");
-    colHeader.className = "slider-header";
-    colHeader.innerHTML = `<span>Layer Color Offset</span><span>${layer.color_offset.toFixed(2)}</span>`;
+    colInputGroup.appendChild(colLockBtn);
     
     const colInput = document.createElement("input");
     colInput.type = "range";
@@ -946,6 +951,7 @@ function rebuildDynamicSliders() {
     colInput.max = "1";
     colInput.step = "0.01";
     colInput.value = layer.color_offset;
+    colInput.style.flex = "1";
     
     colInput.addEventListener("mousedown", () => {
         pushHistoryState();
