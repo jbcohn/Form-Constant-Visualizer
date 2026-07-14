@@ -141,6 +141,30 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Section 2: Autoplay -->
+                <section class="control-section">
+                    <div class="row">
+                        <div class="col">
+                            <label>Autoplay Screensaver</label>
+                            <div id="control-autoplay" class="segmented-control">
+                                <button class="segment-btn active" data-mode="off">Off</button>
+                                <button class="segment-btn" data-mode="random">Random</button>
+                                <button class="segment-btn" data-mode="favorites">Favorites</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <div class="slider-header">
+                                <span>Transition Speed</span>
+                                <span id="val-transition-speed">1.5s</span>
+                            </div>
+                            <input id="slide-transition-speed" type="range" min="0.5" max="8.0" step="0.1" value="1.5">
+                        </div>
+                    </div>
+                </section>
             </div>
             
             <!-- Bottom Sticky Actions -->

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'form-constants-v6'; // Cache bust to version 6
+const CACHE_NAME = 'form-constants-v7'; // Cache bust to version 7
 const ASSETS = [
   'index.html',
   'style.css',

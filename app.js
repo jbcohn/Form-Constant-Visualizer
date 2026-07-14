@@ -123,7 +123,10 @@ const state = {
     globalRotation: 0,
     activePaletteIdx: 0,
     activePresetIdx: 0,
-    toastTimer: null
+    toastTimer: null,
+    autoplayMode: "off", // off, random, favorites
+    transitionDuration: 1500, // duration in milliseconds
+    autoplayTimer: null
 };
 
 // Default Preset Configurations for Form Constants (Exactly 4 layers per preset)
@@ -875,6 +878,7 @@ function rebuildDynamicSliders() {
                 btn.className = "segment-btn" + (Math.round(p[def.key]) === optIdx ? " active" : "");
                 btn.textContent = optText;
                 btn.addEventListener("click", () => {
+                    turnAutoplayOff();
                     // Update visual state of buttons in this group
                     group.querySelectorAll(".segment-btn").forEach((b, idx) => {
                         b.classList.toggle("active", idx === optIdx);
@@ -903,6 +907,7 @@ function rebuildDynamicSliders() {
             input.value = currVal;
             
             input.addEventListener("input", (e) => {
+                turnAutoplayOff();
                 let val = parseFloat(e.target.value);
                 if (def.isInt) val = Math.round(val);
                 p[def.key] = val;
@@ -932,6 +937,7 @@ function rebuildDynamicSliders() {
     colInput.value = layer.color_offset;
     
     colInput.addEventListener("input", (e) => {
+        turnAutoplayOff();
         const val = parseFloat(e.target.value);
         layer.color_offset = val;
         colHeader.querySelector("span:last-child").textContent = val.toFixed(2);
@@ -997,11 +1003,64 @@ function startTransitionTo(targetState) {
     if (animationController.rafId) {
         cancelAnimationFrame(animationController.rafId);
     }
+    
+    // Clear any pending autoplay timer since we are initiating a transition now
+    if (state.autoplayTimer) {
+        clearTimeout(state.autoplayTimer);
+        state.autoplayTimer = null;
+    }
+    
+    // Set transition duration dynamically from current speed setting
+    animationController.duration = state.transitionDuration;
+    
     animationController.startState = captureCurrentStateSnapshot();
     animationController.targetState = targetState;
     animationController.startTime = performance.now();
     animationController.isAnimating = true;
     animationController.rafId = requestAnimationFrame(animateTransitionStep);
+}
+
+// Turn off autoplay screensaver mode cleanly
+function turnAutoplayOff() {
+    if (state.autoplayMode === "off") return;
+    
+    state.autoplayMode = "off";
+    if (state.autoplayTimer) {
+        clearTimeout(state.autoplayTimer);
+        state.autoplayTimer = null;
+    }
+    
+    // Sync UI button group selection
+    const group = document.getElementById("control-autoplay");
+    if (group) {
+        group.querySelectorAll(".segment-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.getAttribute("data-mode") === "off");
+        });
+    }
+}
+
+// Trigger next autoplay transition
+function triggerNextAutoplayTransition() {
+    if (state.autoplayMode === "off") return;
+    
+    let target;
+    if (state.autoplayMode === "favorites") {
+        const favorites = getFavorites();
+        const keys = Object.keys(favorites);
+        if (keys.length > 0) {
+            const randomKey = keys[Math.floor(Math.random() * keys.length)];
+            target = makeTargetStateFromFav(favorites[randomKey]);
+            showToast(`Autoplay: Morphing to "${randomKey}"...`);
+        } else {
+            showToast("No favorites saved yet. Morphing to Random...");
+            target = getRandomTargetState();
+        }
+    } else {
+        target = getRandomTargetState();
+        showToast("Autoplay: Morphing to Random...");
+    }
+    
+    startTransitionTo(target);
 }
 
 // Single step of transition interpolation loop
@@ -1106,6 +1165,14 @@ function animateTransitionStep(timestamp) {
         });
         
         rebuildDynamicSliders();
+        
+        // Handle Autoplay morph looping
+        if (state.autoplayMode !== "off") {
+            if (state.autoplayTimer) clearTimeout(state.autoplayTimer);
+            state.autoplayTimer = setTimeout(() => {
+                triggerNextAutoplayTransition();
+            }, 1500); // 1.5 second pause at rest
+        }
     }
 }
 
@@ -1188,8 +1255,8 @@ function loadPreset(preset, animate = true) {
     }
 }
 
-// Randomizer
-function randomizeDesign() {
+// Generate a completely randomized visual target state snapshot
+function getRandomTargetState() {
     const target = captureCurrentStateSnapshot();
     
     target.layers[0].active = true;
@@ -1253,6 +1320,13 @@ function randomizeDesign() {
     target.globalLineWidth = parseFloat((Math.random() * 1.4 + 0.6).toFixed(2));
     target.paletteIdx = Math.floor(Math.random() * PALETTES.length);
     
+    return target;
+}
+
+// Randomizer (Manual Trigger)
+function randomizeDesign() {
+    turnAutoplayOff();
+    const target = getRandomTargetState();
     startTransitionTo(target);
 }
 
@@ -1405,6 +1479,7 @@ function bindEvents() {
     // 1. Layer tab switches
     document.querySelectorAll("#layer-tabs button").forEach(btn => {
         btn.addEventListener("click", (e) => {
+            turnAutoplayOff();
             document.querySelectorAll("#layer-tabs button").forEach(b => b.classList.remove("active"));
             e.target.classList.add("active");
             
@@ -1429,6 +1504,7 @@ function bindEvents() {
     // 2. Layer Type switches
     document.querySelectorAll("#type-tabs button").forEach(btn => {
         btn.addEventListener("click", (e) => {
+            turnAutoplayOff();
             document.querySelectorAll("#type-tabs button").forEach(b => b.classList.remove("active"));
             e.target.classList.add("active");
             
@@ -1442,17 +1518,20 @@ function bindEvents() {
     
     // 3. Checkbox Layer Active Toggle
     document.getElementById("chk-layer-active").addEventListener("change", (e) => {
+        turnAutoplayOff();
         state.layers[state.currentLayerIdx].active = e.target.checked;
         drawMandalaOnScreen();
     });
     
     // 4. Palette Selectors
     document.getElementById("btn-prev-palette").addEventListener("click", () => {
+        turnAutoplayOff();
         state.activePaletteIdx = (state.activePaletteIdx - 1 + PALETTES.length) % PALETTES.length;
         document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
         drawMandalaOnScreen();
     });
     document.getElementById("btn-next-palette").addEventListener("click", () => {
+        turnAutoplayOff();
         state.activePaletteIdx = (state.activePaletteIdx + 1) % PALETTES.length;
         document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
         drawMandalaOnScreen();
@@ -1460,11 +1539,13 @@ function bindEvents() {
     
     // 5. Presets Selectors
     document.getElementById("btn-prev-preset").addEventListener("click", () => {
+        turnAutoplayOff();
         state.activePresetIdx = (state.activePresetIdx - 1 + PRESETS.length) % PRESETS.length;
         document.getElementById("lbl-preset").textContent = PRESETS[state.activePresetIdx].name;
         loadPreset(PRESETS[state.activePresetIdx]);
     });
     document.getElementById("btn-next-preset").addEventListener("click", () => {
+        turnAutoplayOff();
         state.activePresetIdx = (state.activePresetIdx + 1) % PRESETS.length;
         document.getElementById("lbl-preset").textContent = PRESETS[state.activePresetIdx].name;
         loadPreset(PRESETS[state.activePresetIdx]);
@@ -1472,21 +1553,25 @@ function bindEvents() {
     
     // 6. Global Sliders
     document.getElementById("slide-global-scale").addEventListener("input", (e) => {
+        turnAutoplayOff();
         state.globalScale = parseFloat(e.target.value);
         document.getElementById("val-global-scale").textContent = state.globalScale.toFixed(2);
         drawMandalaOnScreen();
     });
     document.getElementById("slide-global-thick").addEventListener("input", (e) => {
+        turnAutoplayOff();
         state.globalLineWidth = parseFloat(e.target.value);
         document.getElementById("val-global-thick").textContent = state.globalLineWidth.toFixed(2);
         drawMandalaOnScreen();
     });
     document.getElementById("slide-global-shift").addEventListener("input", (e) => {
+        turnAutoplayOff();
         state.globalColorShift = parseFloat(e.target.value);
         document.getElementById("val-global-shift").textContent = state.globalColorShift.toFixed(2);
         drawMandalaOnScreen();
     });
     document.getElementById("slide-global-rot").addEventListener("input", (e) => {
+        turnAutoplayOff();
         state.globalRotation = parseInt(e.target.value);
         document.getElementById("val-global-rot").textContent = state.globalRotation + "°";
         drawMandalaOnScreen();
@@ -1500,7 +1585,36 @@ function bindEvents() {
     // 7.5 Favorites Commands
     document.getElementById("btn-save-favorite").addEventListener("click", handleSaveFavorite);
     document.getElementById("btn-delete-favorite").addEventListener("click", handleDeleteFavorite);
-    document.getElementById("select-favorites").addEventListener("change", handleSelectFavoriteChange);
+    document.getElementById("select-favorites").addEventListener("change", (e) => {
+        turnAutoplayOff();
+        handleSelectFavoriteChange(e);
+    });
+    
+    // 7.6 Autoplay Controls
+    document.querySelectorAll("#control-autoplay button").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            document.querySelectorAll("#control-autoplay button").forEach(b => b.classList.remove("active"));
+            e.target.classList.add("active");
+            
+            const mode = e.target.getAttribute("data-mode");
+            state.autoplayMode = mode;
+            
+            if (state.autoplayTimer) {
+                clearTimeout(state.autoplayTimer);
+                state.autoplayTimer = null;
+            }
+            
+            if (mode !== "off") {
+                triggerNextAutoplayTransition();
+            }
+        });
+    });
+    
+    document.getElementById("slide-transition-speed").addEventListener("input", (e) => {
+        const speedSec = parseFloat(e.target.value);
+        state.transitionDuration = speedSec * 1000;
+        document.getElementById("val-transition-speed").textContent = speedSec.toFixed(1) + "s";
+    });
     
     // 8. Mobile Sliding Panel Bottom Sheet Gesture/Click events
     const dragHandle = document.getElementById("drag-handle");
