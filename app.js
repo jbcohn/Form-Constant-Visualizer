@@ -10,6 +10,14 @@ const PALETTES = [
     "Pastel Dream"
 ];
 
+// Vector SVGs for Option 2: Retro Thick Solid Fill lock / unlock icons
+const SVG_LOCKED = `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8 1a3.5 3.5 0 0 0-3.5 3.5V6H1v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h-3.5V4.5A3.5 3.5 0 0 0 8 1zm2.5 5h-5V4.5a2.5 2.5 0 0 1 5 0V6z"/></svg>`;
+const SVG_UNLOCKED = `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M11 1a3.5 3.5 0 0 0-3.5 3.5V6H1v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h-3.5V4.5a2.5 2.5 0 0 1 5 0V6h1V4.5A3.5 3.5 0 0 0 11 1z"/></svg>`;
+
+function getLockSvg(isLocked) {
+    return isLocked ? SVG_LOCKED : SVG_UNLOCKED;
+}
+
 function getColor(t, paletteName) {
     t = t % 1.0;
     let h, s, l;
@@ -844,13 +852,13 @@ function rebuildDynamicSliders() {
         lockBtn.className = "lock-btn";
         const isLocked = state.locks.layerParams[state.currentLayerIdx][def.key] || false;
         lockBtn.classList.toggle("locked", isLocked);
-        lockBtn.textContent = isLocked ? "🔒" : "🔓";
+        lockBtn.innerHTML = getLockSvg(isLocked);
         lockBtn.title = "Lock Setting from Randomization";
         lockBtn.addEventListener("click", () => {
             const locks = state.locks.layerParams[state.currentLayerIdx];
             locks[def.key] = !locks[def.key];
             lockBtn.classList.toggle("locked", locks[def.key]);
-            lockBtn.textContent = locks[def.key] ? "🔒" : "🔓";
+            lockBtn.innerHTML = getLockSvg(locks[def.key]);
             playLockSound(locks[def.key]);
         });
         inputGroup.appendChild(lockBtn);
@@ -937,12 +945,12 @@ function rebuildDynamicSliders() {
     colLockBtn.className = "lock-btn";
     const isColLocked = state.locks.layerColorOffset[state.currentLayerIdx] || false;
     colLockBtn.classList.toggle("locked", isColLocked);
-    colLockBtn.textContent = isColLocked ? "🔒" : "🔓";
+    colLockBtn.innerHTML = getLockSvg(isColLocked);
     colLockBtn.title = "Lock Setting from Randomization";
     colLockBtn.addEventListener("click", () => {
         state.locks.layerColorOffset[state.currentLayerIdx] = !state.locks.layerColorOffset[state.currentLayerIdx];
         colLockBtn.classList.toggle("locked", state.locks.layerColorOffset[state.currentLayerIdx]);
-        colLockBtn.textContent = state.locks.layerColorOffset[state.currentLayerIdx] ? "🔒" : "🔓";
+        colLockBtn.innerHTML = getLockSvg(state.locks.layerColorOffset[state.currentLayerIdx]);
         playLockSound(state.locks.layerColorOffset[state.currentLayerIdx]);
     });
     colInputGroup.appendChild(colLockBtn);
@@ -1066,50 +1074,20 @@ function turnAutoplayOff() {
     }
 }
 
-// Web Audio API Synthesizer sound effect helper for locking / unlocking settings
-let audioCtx = null;
+// Load custom mechanical lock/unlock click sound effect
+const clickAudio = new Audio("click.mp3");
+
 function playLockSound(isLocked) {
     try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        
-        const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        
-        const now = audioCtx.currentTime;
-        
-        if (isLocked) {
-            // Lock sound: digital blip (ascending chirp)
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(550, now);
-            osc.frequency.exponentialRampToValueAtTime(1100, now + 0.08);
-            
-            gainNode.gain.setValueAtTime(0.08, now);
-            gainNode.gain.linearRampToValueAtTime(0.001, now + 0.08);
-            
-            osc.start(now);
-            osc.stop(now + 0.08);
-        } else {
-            // Unlock sound: descending latch release sweep
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(900, now);
-            osc.frequency.exponentialRampToValueAtTime(450, now + 0.1);
-            
-            gainNode.gain.setValueAtTime(0.07, now);
-            gainNode.gain.linearRampToValueAtTime(0.001, now + 0.1);
-            
-            osc.start(now);
-            osc.stop(now + 0.1);
-        }
+        // Reset to start in case of rapid clicks
+        clickAudio.currentTime = 0;
+        // Lock sound: normal mechanical click. Unlock sound: slightly faster/higher-pitched release click
+        clickAudio.playbackRate = isLocked ? 1.0 : 1.35;
+        clickAudio.play().catch(e => {
+            console.warn("Audio playback blocked or user interaction required:", e);
+        });
     } catch (e) {
-        console.warn("AudioContext block/unsupported:", e);
+        console.warn("Audio playback error:", e);
     }
 }
 
@@ -1575,14 +1553,14 @@ function bindEvents() {
             const activeLockBtn = document.getElementById("btn-lock-layer-active");
             if (activeLockBtn) {
                 activeLockBtn.classList.toggle("locked", activeLocked);
-                activeLockBtn.textContent = activeLocked ? "🔒" : "🔓";
+                activeLockBtn.innerHTML = getLockSvg(activeLocked);
             }
             
             const typeLocked = state.locks.layerType[state.currentLayerIdx];
             const typeLockBtn = document.getElementById("btn-lock-layer-type");
             if (typeLockBtn) {
                 typeLockBtn.classList.toggle("locked", typeLocked);
-                typeLockBtn.textContent = typeLocked ? "🔒" : "🔓";
+                typeLockBtn.innerHTML = getLockSvg(typeLocked);
             }
             
             rebuildDynamicSliders();
@@ -1638,12 +1616,12 @@ function bindEvents() {
         // Initial state sync
         const isLocked = state.locks[key];
         btn.classList.toggle("locked", isLocked);
-        btn.textContent = isLocked ? "🔒" : "🔓";
+        btn.innerHTML = getLockSvg(isLocked);
         
         btn.addEventListener("click", () => {
             state.locks[key] = !state.locks[key];
             btn.classList.toggle("locked", state.locks[key]);
-            btn.textContent = state.locks[key] ? "🔒" : "🔓";
+            btn.innerHTML = getLockSvg(state.locks[key]);
             playLockSound(state.locks[key]);
         });
     });
@@ -1655,7 +1633,7 @@ function bindEvents() {
             const idx = state.currentLayerIdx;
             state.locks.layerActive[idx] = !state.locks.layerActive[idx];
             activeLockBtn.classList.toggle("locked", state.locks.layerActive[idx]);
-            activeLockBtn.textContent = state.locks.layerActive[idx] ? "🔒" : "🔓";
+            activeLockBtn.innerHTML = getLockSvg(state.locks.layerActive[idx]);
             playLockSound(state.locks.layerActive[idx]);
         });
     }
@@ -1667,7 +1645,7 @@ function bindEvents() {
             const idx = state.currentLayerIdx;
             state.locks.layerType[idx] = !state.locks.layerType[idx];
             typeLockBtn.classList.toggle("locked", state.locks.layerType[idx]);
-            typeLockBtn.textContent = state.locks.layerType[idx] ? "🔒" : "🔓";
+            typeLockBtn.innerHTML = getLockSvg(state.locks.layerType[idx]);
             playLockSound(state.locks.layerType[idx]);
         });
     }
@@ -1799,6 +1777,12 @@ function init() {
     document.querySelectorAll("#control-palette .segment-btn").forEach(b => {
         b.classList.toggle("active", parseInt(b.getAttribute("data-palette-idx")) === state.activePaletteIdx);
     });
+    
+    // Sync initial lock buttons SVG icons for Layer Active and Layer Type
+    const activeLockBtn = document.getElementById("btn-lock-layer-active");
+    if (activeLockBtn) activeLockBtn.innerHTML = getLockSvg(state.locks.layerActive[state.currentLayerIdx]);
+    const typeLockBtn = document.getElementById("btn-lock-layer-type");
+    if (typeLockBtn) typeLockBtn.innerHTML = getLockSvg(state.locks.layerType[state.currentLayerIdx]);
     
     rebuildDynamicSliders();
     drawMandalaOnScreen();

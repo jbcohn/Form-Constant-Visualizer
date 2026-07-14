@@ -1,10 +1,11 @@
-const CACHE_NAME = 'form-constants-v11'; // Cache bust to version 11
+const CACHE_NAME = 'form-constants-v13'; // Cache bust to version 13
 const ASSETS = [
   'index.html',
   'style.css',
-  'app.js?v=10',
+  'app.js?v=11',
   'manifest.json',
-  'icon.svg'
+  'icon.svg',
+  'click.mp3'
 ];
 
 // Install Service Worker
