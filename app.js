@@ -873,9 +873,9 @@ function rebuildDynamicSliders() {
                 const btn = document.createElement("button");
                 btn.className = "segment-btn" + (Math.round(p[def.key]) === optIdx ? " active" : "");
                 btn.textContent = optText;
-                btn.addEventListener("click", () => {
+                btn.addEventListener("click", (e) => {
                     pushHistoryState();
-                    turnAutoplayOff();
+                    turnAutoplayOff(e);
                     // Update visual state of buttons in this group
                     group.querySelectorAll(".segment-btn").forEach((b, idx) => {
                         b.classList.toggle("active", idx === optIdx);
@@ -912,7 +912,7 @@ function rebuildDynamicSliders() {
             }, {passive: true});
             
             input.addEventListener("input", (e) => {
-                turnAutoplayOff();
+                turnAutoplayOff(e);
                 let val = parseFloat(e.target.value);
                 if (def.isInt) val = Math.round(val);
                 p[def.key] = val;
@@ -971,7 +971,7 @@ function rebuildDynamicSliders() {
     }, {passive: true});
     
     colInput.addEventListener("input", (e) => {
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         const val = parseFloat(e.target.value);
         layer.color_offset = val;
         colHeader.querySelector("span:last-child").textContent = val.toFixed(2);
@@ -1056,8 +1056,11 @@ function startTransitionTo(targetState) {
 }
 
 // Turn off autoplay screensaver mode cleanly
-function turnAutoplayOff() {
+function turnAutoplayOff(e) {
     if (state.autoplayMode === "off") return;
+    
+    // Ignore programmatic events to prevent loops or autoplay cancellations on value changes
+    if (e && e.isTrusted === false) return;
     
     state.autoplayMode = "off";
     if (state.autoplayTimer) {
@@ -1143,10 +1146,10 @@ function undoLastAction() {
 }
 
 // Single step of transition interpolation loop
-function animateTransitionStep(timestamp) {
+function animateTransitionStep() {
     if (!animationController.isAnimating) return;
     
-    const elapsed = timestamp - animationController.startTime;
+    const elapsed = performance.now() - animationController.startTime;
     let t = Math.min(elapsed / animationController.duration, 1.0);
     
     const easedT = animationController.ease(t);
@@ -1154,11 +1157,17 @@ function animateTransitionStep(timestamp) {
     const target = animationController.targetState;
     
     // Interpolate Globals
+    state.globalScale = start.globalScale + (target.globalScale - start.globalScale) * easedT;
     state.globalRotation = start.globalRotation + (target.globalRotation - start.globalRotation) * easedT;
     state.globalLineWidth = start.globalLineWidth + (target.globalLineWidth - start.globalLineWidth) * easedT;
     state.globalColorShift = start.globalColorShift + (target.globalColorShift - start.globalColorShift) * easedT;
     
     // Update global visual indicators
+    const scaleSlider = document.getElementById("slide-global-scale");
+    if (scaleSlider) {
+        scaleSlider.value = state.globalScale;
+        document.getElementById("val-global-scale").textContent = state.globalScale.toFixed(2);
+    }
     const thickSlider = document.getElementById("slide-global-thick");
     if (thickSlider) {
         thickSlider.value = state.globalLineWidth;
@@ -1373,9 +1382,9 @@ function getRandomTargetState() {
 }
 
 // Randomizer (Manual Trigger)
-function randomizeDesign() {
+function randomizeDesign(e) {
     pushHistoryState();
-    turnAutoplayOff();
+    turnAutoplayOff(e);
     const target = getRandomTargetState();
     startTransitionTo(target);
 }
@@ -1530,7 +1539,7 @@ function bindEvents() {
     document.querySelectorAll("#layer-tabs button").forEach(btn => {
         btn.addEventListener("click", (e) => {
             pushHistoryState();
-            turnAutoplayOff();
+            turnAutoplayOff(e);
             document.querySelectorAll("#layer-tabs button").forEach(b => b.classList.remove("active"));
             e.target.classList.add("active");
             
@@ -1571,7 +1580,7 @@ function bindEvents() {
     document.querySelectorAll("#type-tabs button").forEach(btn => {
         btn.addEventListener("click", (e) => {
             pushHistoryState();
-            turnAutoplayOff();
+            turnAutoplayOff(e);
             document.querySelectorAll("#type-tabs button").forEach(b => b.classList.remove("active"));
             e.target.classList.add("active");
             
@@ -1586,7 +1595,7 @@ function bindEvents() {
     // 3. Checkbox Layer Active Toggle
     document.getElementById("chk-layer-active").addEventListener("change", (e) => {
         pushHistoryState();
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         state.layers[state.currentLayerIdx].active = e.target.checked;
         drawMandalaOnScreen();
     });
@@ -1595,7 +1604,7 @@ function bindEvents() {
     document.querySelectorAll("#control-palette .segment-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             pushHistoryState();
-            turnAutoplayOff();
+            turnAutoplayOff(e);
             
             const idx = parseInt(e.target.getAttribute("data-palette-idx"));
             state.activePaletteIdx = idx;
@@ -1665,25 +1674,25 @@ function bindEvents() {
     });
 
     document.getElementById("slide-global-scale").addEventListener("input", (e) => {
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         state.globalScale = parseFloat(e.target.value);
         document.getElementById("val-global-scale").textContent = state.globalScale.toFixed(2);
         drawMandalaOnScreen();
     });
     document.getElementById("slide-global-thick").addEventListener("input", (e) => {
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         state.globalLineWidth = parseFloat(e.target.value);
         document.getElementById("val-global-thick").textContent = state.globalLineWidth.toFixed(2);
         drawMandalaOnScreen();
     });
     document.getElementById("slide-global-shift").addEventListener("input", (e) => {
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         state.globalColorShift = parseFloat(e.target.value);
         document.getElementById("val-global-shift").textContent = state.globalColorShift.toFixed(2);
         drawMandalaOnScreen();
     });
     document.getElementById("slide-global-rot").addEventListener("input", (e) => {
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         state.globalRotation = parseInt(e.target.value);
         document.getElementById("val-global-rot").textContent = state.globalRotation + "°";
         drawMandalaOnScreen();
@@ -1700,7 +1709,7 @@ function bindEvents() {
     document.getElementById("btn-delete-favorite").addEventListener("click", handleDeleteFavorite);
     document.getElementById("select-favorites").addEventListener("change", (e) => {
         pushHistoryState();
-        turnAutoplayOff();
+        turnAutoplayOff(e);
         handleSelectFavoriteChange(e);
     });
     

@@ -1,8 +1,8 @@
-const CACHE_NAME = 'form-constants-v13'; // Cache bust to version 13
+const CACHE_NAME = 'form-constants-v14'; // Cache bust to version 14
 const ASSETS = [
   'index.html',
   'style.css',
-  'app.js?v=11',
+  'app.js?v=12',
   'manifest.json',
   'icon.svg',
   'click.mp3'
