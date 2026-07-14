@@ -11,14 +11,14 @@ body {
     background-color: #020617;
     color: #f8fafc;
     overflow: hidden;
-    height: 100vh;
+    height: 100dvh;
 }
 
 /* Main Layout Grid */
 #app-container {
     display: flex;
     flex-direction: row;
-    height: 100vh;
+    height: 100dvh;
     width: 100vw;
 }
 
@@ -48,7 +48,7 @@ body {
     border-left: 2px solid #1e293b;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
     z-index: 5;
 }
@@ -425,10 +425,10 @@ input[type="range"]::-moz-range-thumb:hover {
 /* ==========================================================================
    Responsive Mobile Styling (Bottom Sheet Layout)
    ========================================================================== */
-@media (max-width: 800px) {
+@media (max-width: 1024px) {
     #app-container {
         flex-direction: column;
-        height: 100vh;
+        height: 100dvh;
         overflow: hidden;
     }
     
@@ -489,7 +489,7 @@ input[type="range"]::-moz-range-thumb:hover {
     
     /* Toast spacing on mobile */
     #toast {
-        bottom: calc(100vh - 100vw + 20px);
+        bottom: calc(100dvh - 100vw + 20px);
         max-width: 90%;
         font-size: 0.8rem;
     }
