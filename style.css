@@ -546,7 +546,7 @@ input[type="range"]::-moz-range-thumb:hover {
 .lock-btn {
     background: transparent;
     border: none;
-    color: #0f172a; /* Slate-900 (very dark) */
+    color: #475569; /* Slate-600 */
     cursor: pointer;
     font-size: 0.85rem;
     padding: 0;
@@ -557,7 +557,7 @@ input[type="range"]::-moz-range-thumb:hover {
     justify-content: center;
     transition: all 0.2s;
     flex-shrink: 0;
-    opacity: 0.35; /* Matches background/blends in */
+    opacity: 0.7; /* Clearly visible but subtle */
     user-select: none;
 }
 
