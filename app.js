@@ -851,6 +851,7 @@ function rebuildDynamicSliders() {
             locks[def.key] = !locks[def.key];
             lockBtn.classList.toggle("locked", locks[def.key]);
             lockBtn.textContent = locks[def.key] ? "🔒" : "🔓";
+            playLockSound(locks[def.key]);
         });
         inputGroup.appendChild(lockBtn);
         
@@ -942,6 +943,7 @@ function rebuildDynamicSliders() {
         state.locks.layerColorOffset[state.currentLayerIdx] = !state.locks.layerColorOffset[state.currentLayerIdx];
         colLockBtn.classList.toggle("locked", state.locks.layerColorOffset[state.currentLayerIdx]);
         colLockBtn.textContent = state.locks.layerColorOffset[state.currentLayerIdx] ? "🔒" : "🔓";
+        playLockSound(state.locks.layerColorOffset[state.currentLayerIdx]);
     });
     colInputGroup.appendChild(colLockBtn);
     
@@ -1064,6 +1066,53 @@ function turnAutoplayOff() {
     }
 }
 
+// Web Audio API Synthesizer sound effect helper for locking / unlocking settings
+let audioCtx = null;
+function playLockSound(isLocked) {
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        const now = audioCtx.currentTime;
+        
+        if (isLocked) {
+            // Lock sound: digital blip (ascending chirp)
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(550, now);
+            osc.frequency.exponentialRampToValueAtTime(1100, now + 0.08);
+            
+            gainNode.gain.setValueAtTime(0.08, now);
+            gainNode.gain.linearRampToValueAtTime(0.001, now + 0.08);
+            
+            osc.start(now);
+            osc.stop(now + 0.08);
+        } else {
+            // Unlock sound: descending latch release sweep
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(900, now);
+            osc.frequency.exponentialRampToValueAtTime(450, now + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.07, now);
+            gainNode.gain.linearRampToValueAtTime(0.001, now + 0.1);
+            
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+    } catch (e) {
+        console.warn("AudioContext block/unsupported:", e);
+    }
+}
+
 // Trigger next autoplay transition
 function triggerNextAutoplayTransition() {
     if (state.autoplayMode === "off") return;
@@ -1075,14 +1124,11 @@ function triggerNextAutoplayTransition() {
         if (keys.length > 0) {
             const randomKey = keys[Math.floor(Math.random() * keys.length)];
             target = makeTargetStateFromFav(favorites[randomKey]);
-            showToast(`Autoplay: Morphing to "${randomKey}"...`);
         } else {
-            showToast("No favorites saved yet. Morphing to Random...");
             target = getRandomTargetState();
         }
     } else {
         target = getRandomTargetState();
-        showToast("Autoplay: Morphing to Random...");
     }
     
     startTransitionTo(target);
@@ -1598,7 +1644,7 @@ function bindEvents() {
             state.locks[key] = !state.locks[key];
             btn.classList.toggle("locked", state.locks[key]);
             btn.textContent = state.locks[key] ? "🔒" : "🔓";
-            showToast(`${key.replace(/global/, "Global ")} state ${state.locks[key] ? "Locked 🔒" : "Unlocked 🔓"}`);
+            playLockSound(state.locks[key]);
         });
     });
     
@@ -1610,7 +1656,7 @@ function bindEvents() {
             state.locks.layerActive[idx] = !state.locks.layerActive[idx];
             activeLockBtn.classList.toggle("locked", state.locks.layerActive[idx]);
             activeLockBtn.textContent = state.locks.layerActive[idx] ? "🔒" : "🔓";
-            showToast(`Layer ${idx + 1} active state ${state.locks.layerActive[idx] ? "Locked 🔒" : "Unlocked 🔓"}`);
+            playLockSound(state.locks.layerActive[idx]);
         });
     }
     
@@ -1622,7 +1668,7 @@ function bindEvents() {
             state.locks.layerType[idx] = !state.locks.layerType[idx];
             typeLockBtn.classList.toggle("locked", state.locks.layerType[idx]);
             typeLockBtn.textContent = state.locks.layerType[idx] ? "🔒" : "🔓";
-            showToast(`Layer ${idx + 1} type ${state.locks.layerType[idx] ? "Locked 🔒" : "Unlocked 🔓"}`);
+            playLockSound(state.locks.layerType[idx]);
         });
     }
     
