@@ -999,6 +999,7 @@ const animationController = {
 function captureCurrentStateSnapshot() {
     return {
         paletteIdx: state.activePaletteIdx,
+        globalScale: state.globalScale,
         globalRotation: state.globalRotation,
         globalLineWidth: state.globalLineWidth,
         globalColorShift: state.globalColorShift,
@@ -1021,6 +1022,7 @@ function captureCurrentStateSnapshot() {
 function getSerializedState() {
     return {
         paletteName: PALETTES[state.activePaletteIdx],
+        globalScale: state.globalScale,
         globalRotation: state.globalRotation,
         globalLineWidth: state.globalLineWidth,
         globalColorShift: state.globalColorShift,
@@ -1273,6 +1275,7 @@ function makeTargetStateFromFav(fav) {
     const palIdx = PALETTES.indexOf(fav.paletteName);
     if (palIdx !== -1) target.paletteIdx = palIdx;
     
+    target.globalScale = fav.globalScale ?? 1.0;
     target.globalRotation = fav.globalRotation ?? 0;
     target.globalLineWidth = fav.globalLineWidth ?? 1.5;
     target.globalColorShift = fav.globalColorShift ?? 0.0;
