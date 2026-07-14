@@ -978,9 +978,8 @@ function rebuildDynamicSliders() {
         drawMandalaOnScreen();
     });
     
-    offsetCol.appendChild(colHeader);
-    offsetCol.appendChild(colInput);
-    colRow.appendChild(offsetCol);
+    colInputGroup.appendChild(colInput);
+    colRow.appendChild(colInputGroup);
     container.appendChild(colRow);
 }
 
