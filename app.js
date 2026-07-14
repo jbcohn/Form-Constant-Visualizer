@@ -129,6 +129,10 @@ const state = {
     autoplayTimer: null
 };
 
+// Undo History State Stack
+const stateHistory = [];
+const MAX_HISTORY_LEN = 30;
+
 // Default Preset Configurations for Form Constants (Exactly 4 layers per preset)
 const PRESETS = [
     {
@@ -878,6 +882,7 @@ function rebuildDynamicSliders() {
                 btn.className = "segment-btn" + (Math.round(p[def.key]) === optIdx ? " active" : "");
                 btn.textContent = optText;
                 btn.addEventListener("click", () => {
+                    pushHistoryState();
                     turnAutoplayOff();
                     // Update visual state of buttons in this group
                     group.querySelectorAll(".segment-btn").forEach((b, idx) => {
@@ -905,6 +910,13 @@ function rebuildDynamicSliders() {
             input.max = def.max;
             input.step = def.step;
             input.value = currVal;
+            
+            input.addEventListener("mousedown", () => {
+                pushHistoryState();
+            });
+            input.addEventListener("touchstart", () => {
+                pushHistoryState();
+            }, {passive: true});
             
             input.addEventListener("input", (e) => {
                 turnAutoplayOff();
@@ -935,6 +947,13 @@ function rebuildDynamicSliders() {
     colInput.max = "1";
     colInput.step = "0.01";
     colInput.value = layer.color_offset;
+    
+    colInput.addEventListener("mousedown", () => {
+        pushHistoryState();
+    });
+    colInput.addEventListener("touchstart", () => {
+        pushHistoryState();
+    }, {passive: true});
     
     colInput.addEventListener("input", (e) => {
         turnAutoplayOff();
@@ -1061,6 +1080,36 @@ function triggerNextAutoplayTransition() {
     }
     
     startTransitionTo(target);
+}
+
+// Push a snapshot of the current state onto the history stack for Undo
+function pushHistoryState() {
+    if (stateHistory.length >= MAX_HISTORY_LEN) {
+        stateHistory.shift();
+    }
+    stateHistory.push(captureCurrentStateSnapshot());
+    
+    // Enable the Undo button visually
+    const undoBtn = document.getElementById("btn-undo");
+    if (undoBtn) {
+        undoBtn.disabled = false;
+    }
+}
+
+// Apply Undo to morph back to the previous snapshot
+function undoLastAction() {
+    if (stateHistory.length === 0) return;
+    
+    const prevState = stateHistory.pop();
+    
+    // Disable Undo button if stack is empty
+    const undoBtn = document.getElementById("btn-undo");
+    if (undoBtn && stateHistory.length === 0) {
+        undoBtn.disabled = true;
+    }
+    
+    startTransitionTo(prevState);
+    showToast("Undo applied");
 }
 
 // Single step of transition interpolation loop
@@ -1479,6 +1528,7 @@ function bindEvents() {
     // 1. Layer tab switches
     document.querySelectorAll("#layer-tabs button").forEach(btn => {
         btn.addEventListener("click", (e) => {
+            pushHistoryState();
             turnAutoplayOff();
             document.querySelectorAll("#layer-tabs button").forEach(b => b.classList.remove("active"));
             e.target.classList.add("active");
@@ -1504,6 +1554,7 @@ function bindEvents() {
     // 2. Layer Type switches
     document.querySelectorAll("#type-tabs button").forEach(btn => {
         btn.addEventListener("click", (e) => {
+            pushHistoryState();
             turnAutoplayOff();
             document.querySelectorAll("#type-tabs button").forEach(b => b.classList.remove("active"));
             e.target.classList.add("active");
@@ -1518,6 +1569,7 @@ function bindEvents() {
     
     // 3. Checkbox Layer Active Toggle
     document.getElementById("chk-layer-active").addEventListener("change", (e) => {
+        pushHistoryState();
         turnAutoplayOff();
         state.layers[state.currentLayerIdx].active = e.target.checked;
         drawMandalaOnScreen();
@@ -1525,12 +1577,14 @@ function bindEvents() {
     
     // 4. Palette Selectors
     document.getElementById("btn-prev-palette").addEventListener("click", () => {
+        pushHistoryState();
         turnAutoplayOff();
         state.activePaletteIdx = (state.activePaletteIdx - 1 + PALETTES.length) % PALETTES.length;
         document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
         drawMandalaOnScreen();
     });
     document.getElementById("btn-next-palette").addEventListener("click", () => {
+        pushHistoryState();
         turnAutoplayOff();
         state.activePaletteIdx = (state.activePaletteIdx + 1) % PALETTES.length;
         document.getElementById("lbl-palette").textContent = PALETTES[state.activePaletteIdx];
@@ -1539,12 +1593,14 @@ function bindEvents() {
     
     // 5. Presets Selectors
     document.getElementById("btn-prev-preset").addEventListener("click", () => {
+        pushHistoryState();
         turnAutoplayOff();
         state.activePresetIdx = (state.activePresetIdx - 1 + PRESETS.length) % PRESETS.length;
         document.getElementById("lbl-preset").textContent = PRESETS[state.activePresetIdx].name;
         loadPreset(PRESETS[state.activePresetIdx]);
     });
     document.getElementById("btn-next-preset").addEventListener("click", () => {
+        pushHistoryState();
         turnAutoplayOff();
         state.activePresetIdx = (state.activePresetIdx + 1) % PRESETS.length;
         document.getElementById("lbl-preset").textContent = PRESETS[state.activePresetIdx].name;
@@ -1552,6 +1608,19 @@ function bindEvents() {
     });
     
     // 6. Global Sliders
+    // Bind start of global slider drags for Undo History
+    ["slide-global-scale", "slide-global-thick", "slide-global-shift", "slide-global-rot"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("mousedown", () => {
+                pushHistoryState();
+            });
+            el.addEventListener("touchstart", () => {
+                pushHistoryState();
+            }, {passive: true});
+        }
+    });
+
     document.getElementById("slide-global-scale").addEventListener("input", (e) => {
         turnAutoplayOff();
         state.globalScale = parseFloat(e.target.value);
@@ -1578,6 +1647,7 @@ function bindEvents() {
     });
     
     // 7. Action Button Commands
+    document.getElementById("btn-undo").addEventListener("click", undoLastAction);
     document.getElementById("btn-randomize").addEventListener("click", randomizeDesign);
     document.getElementById("btn-export-trans").addEventListener("click", () => exportDesign(false));
     document.getElementById("btn-export-dark").addEventListener("click", () => exportDesign(true));
@@ -1586,6 +1656,7 @@ function bindEvents() {
     document.getElementById("btn-save-favorite").addEventListener("click", handleSaveFavorite);
     document.getElementById("btn-delete-favorite").addEventListener("click", handleDeleteFavorite);
     document.getElementById("select-favorites").addEventListener("change", (e) => {
+        pushHistoryState();
         turnAutoplayOff();
         handleSelectFavoriteChange(e);
     });

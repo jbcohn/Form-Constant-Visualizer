@@ -585,10 +585,20 @@ input[type="range"]::-moz-range-thumb:hover {
     }
     
     #panel-actions {
-        padding: 10px 14px 12px 14px;
+        padding: 10px 10px 12px 10px;
         background-color: #1e293b;
         border-top: 1px solid #334155;
         flex-shrink: 0;
+        display: flex;
+        flex-direction: row;
+        gap: 6px;
+    }
+    
+    .action-btn {
+        font-size: 0.7rem;
+        height: 38px;
+        padding: 0 2px;
+        border-radius: 4px;
     }
     
     /* Toast spacing on mobile */
