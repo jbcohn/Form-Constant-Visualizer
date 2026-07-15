@@ -24,6 +24,31 @@
         <!-- Canvas Viewport Area -->
         <div id="canvas-container">
             <canvas id="viewport-canvas"></canvas>
+            <!-- Floating Corner Controls -->
+            <div id="floating-controls">
+                <button id="btn-floating-heart" class="floating-btn" title="Toggle Favorite">
+                    <svg viewBox="0 0 24 24" width="20" height="20" class="heart-icon">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button id="btn-floating-fullscreen" class="floating-btn" title="Toggle Fullscreen">
+                    <svg viewBox="0 0 24 24" width="20" height="20" class="fullscreen-icon">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+            <!-- Music Listening Indicator -->
+            <div id="music-indicator" class="hidden">
+                <div class="music-bars">
+                    <div class="music-bar"></div>
+                    <div class="music-bar"></div>
+                    <div class="music-bar"></div>
+                </div>
+                <div class="music-text-container" style="display: flex; flex-direction: column; gap: 2px;">
+                    <span class="music-status" style="font-weight: 700; color: #38bdf8;">Music Active</span>
+                    <span class="music-debug-info" style="font-size: 0.65rem; color: #94a3b8; font-family: monospace; font-weight: 400; opacity: 0.85;"></span>
+                </div>
+            </div>
             <div id="toast" class="hidden"></div>
         </div>
         
@@ -164,6 +189,7 @@
                                 <button class="segment-btn active" data-mode="off">Off</button>
                                 <button class="segment-btn" data-mode="random">Random</button>
                                 <button class="segment-btn" data-mode="favorites">Favorites</button>
+                                <button class="segment-btn" data-mode="music">Music</button>
                             </div>
                         </div>
                     </div>

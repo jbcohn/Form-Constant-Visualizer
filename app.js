@@ -131,9 +131,40 @@ const state = {
     globalRotation: 0,
     activePaletteIdx: 0,
     toastTimer: null,
-    autoplayMode: "off", // off, random, favorites
+    autoplayMode: "off", // off, random, favorites, music
     transitionDuration: 1500, // duration in milliseconds
     autoplayTimer: null,
+    
+    // Music Reaction State
+    musicReaction: {
+        audioContext: null,
+        analyser: null,
+        audioSource: null,
+        scalePulse: 0.0,
+        thicknessPulse: 0.0,
+        colorShiftAccum: 0.0,
+        rotationAccum: 0.0,
+        highJitter: 0.0,
+        history: [],
+        historyMax: 30,
+        lastBeatTime: 0,
+        beatCount: 0,
+        beatTimes: [],
+        smoothedBpm: 0.0,
+        lastBpmUpdateTime: 0,
+        midsHistory: [],
+        highsHistory: [],
+        lastMidBeatTime: 0,
+        lastHighBeatTime: 0,
+        midBeatCount: 0,
+        highBeatCount: 0,
+        energyHistory: [],
+        fps: 60.0,
+        lastFrameTime: 0,
+        lastStrongBpm: 0.0,
+        lastStrongBpmTime: 0,
+        rafId: null
+    },
     
     // Lock states for individual properties from randomization
     locks: {
@@ -763,13 +794,144 @@ function renderMandala(drawCtx, width, height, scaleMultiplier) {
     }
 }
 
-// Draw to Screen Viewport (Retina and anti-aliased via scaling)
+function drawBpmSpectrum(drawCtx, width, height) {
+    if (state.autoplayMode !== "music" || !state.musicReaction || !state.musicReaction.bpmSpectrum || state.musicReaction.bpmSpectrum.length === 0) return;
+    
+    const spectrum = state.musicReaction.bpmSpectrum;
+    
+    // Dimensions (Fixed Layout)
+    const dpr = window.devicePixelRatio || 1;
+    const specWidth = 350 * dpr; // Slightly wider as requested
+    const specHeight = 35 * dpr;
+    const numBars = 72; // Fixed number of bars
+    const barGap = 1 * dpr;
+    const barWidth = (specWidth / numBars) - barGap;
+    
+    // Position at bottom-right corner
+    const padding = 20 * dpr;
+    const startX = width - specWidth - padding - 8 * dpr;
+    const startY = height - padding - 15 * dpr; // Placed at the bottom, matching visual height of bottom-left indicator
+    
+    drawCtx.save();
+    
+    // Draw semi-transparent glassmorphic background box (Fixed size!)
+    drawCtx.fillStyle = "rgba(15, 23, 42, 0.4)";
+    drawCtx.strokeStyle = "rgba(56, 189, 248, 0.15)";
+    drawCtx.lineWidth = 1 * dpr;
+    drawCtx.beginPath();
+    drawCtx.roundRect(startX - 8 * dpr, startY - specHeight - 12 * dpr, specWidth + 16 * dpr, specHeight + 22 * dpr, 8 * dpr);
+    drawCtx.fill();
+    drawCtx.stroke();
+    
+    // Draw Y-axis grid base line
+    drawCtx.strokeStyle = "rgba(148, 163, 184, 0.15)";
+    drawCtx.lineWidth = 1 * dpr;
+    drawCtx.beginPath();
+    drawCtx.moveTo(startX, startY);
+    drawCtx.lineTo(startX + specWidth, startY);
+    drawCtx.stroke();
+    
+    // Draw correlation/volume-at-BPM bars
+    for (let i = 0; i < numBars; i++) {
+        // Map bar index to a specific BPM value (50 to 220)
+        const barBpm = 50 + (i / (numBars - 1)) * 170;
+        
+        // Find closest calculated correlation value in history
+        let val = 0;
+        let closestItem = spectrum[0];
+        let minDist = Math.abs(spectrum[0].bpm - barBpm);
+        for (let j = 1; j < spectrum.length; j++) {
+            const dist = Math.abs(spectrum[j].bpm - barBpm);
+            if (dist < minDist) {
+                minDist = dist;
+                closestItem = spectrum[j];
+            }
+        }
+        val = closestItem ? closestItem.val : 0;
+        
+        const barHeight = val * specHeight;
+        
+        // Color gradient from blue (50 BPM) to magenta (220 BPM)
+        const hue = 200 + (i / numBars) * 110;
+        
+        // Highlight if this bar is close to our current smoothed BPM
+        const isCurrentBpm = state.musicReaction.smoothedBpm > 0 && 
+            Math.abs(barBpm - state.musicReaction.smoothedBpm) < 2.5;
+            
+        drawCtx.fillStyle = isCurrentBpm 
+            ? `hsla(${hue}, 95%, 65%, 0.95)` 
+            : `hsla(${hue}, 80%, 45%, 0.55)`;
+            
+        drawCtx.fillRect(
+            startX + i * (barWidth + barGap),
+            startY - barHeight,
+            barWidth,
+            barHeight
+        );
+    }
+    
+    // Draw fixed BPM labels and tick marks at 60, 90, 120, 150, 180, 210
+    drawCtx.fillStyle = "rgba(148, 163, 184, 0.8)";
+    drawCtx.font = `${8 * dpr}px monospace`;
+    drawCtx.textAlign = "center";
+    
+    const labelBpms = [60, 90, 120, 150, 180, 210];
+    labelBpms.forEach(lblBpm => {
+        // Compute exact, fixed visual coordinate: (BPM - minBPM) / Range
+        const pct = (lblBpm - 50) / 170;
+        const labelX = startX + pct * specWidth;
+        
+        drawCtx.fillText(lblBpm, labelX, startY + 8 * dpr);
+        
+        // Tick mark
+        drawCtx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+        drawCtx.beginPath();
+        drawCtx.moveTo(labelX, startY);
+        drawCtx.lineTo(labelX, startY + 2 * dpr);
+        drawCtx.stroke();
+    });
+    
+    // Title label
+    drawCtx.fillStyle = "rgba(148, 163, 184, 0.6)";
+    drawCtx.font = `${7 * dpr}px monospace`;
+    drawCtx.textAlign = "left";
+    drawCtx.fillText("BPM TEMPO SPECTRUM", startX, startY - specHeight - 2 * dpr);
+    
+    drawCtx.restore();
+}
+
 function drawMandalaOnScreen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Save original state values
+    const origScale = state.globalScale;
+    const origRotation = state.globalRotation;
+    const origLineWidth = state.globalLineWidth;
+    const origColorShift = state.globalColorShift;
+    
+    // Apply music reactive pulses if active
+    if (state.autoplayMode === "music" && state.musicReaction) {
+        state.globalScale = Math.max(0.1, state.globalScale + state.musicReaction.scalePulse + (state.musicReaction.highJitter || 0));
+        state.globalRotation = (state.globalRotation + state.musicReaction.rotationAccum) % 360;
+        state.globalLineWidth = Math.max(0.1, state.globalLineWidth + state.musicReaction.thicknessPulse);
+        state.globalColorShift = (state.globalColorShift + state.musicReaction.colorShiftAccum) % 1.0;
+    }
     
     // Render on screen (device pixels)
     const dpr = window.devicePixelRatio || 1;
     renderMandala(ctx, canvas.width, canvas.height, dpr);
+    
+    // Draw dynamic BPM/Periodicity spectrum overlay on the canvas
+    drawBpmSpectrum(ctx, canvas.width, canvas.height);
+    
+    // Restore original values
+    state.globalScale = origScale;
+    state.globalRotation = origRotation;
+    state.globalLineWidth = origLineWidth;
+    state.globalColorShift = origColorShift;
+    
+    // Keep favorite indicators in sync
+    syncHeartIconState();
 }
 
 // Rebuild Dynamic Sliders Container
@@ -1056,7 +1218,6 @@ function startTransitionTo(targetState) {
     animationController.rafId = requestAnimationFrame(animateTransitionStep);
 }
 
-// Turn off autoplay screensaver mode cleanly
 function turnAutoplayOff(e) {
     if (state.autoplayMode === "off") return;
     
@@ -1068,6 +1229,9 @@ function turnAutoplayOff(e) {
         clearTimeout(state.autoplayTimer);
         state.autoplayTimer = null;
     }
+    
+    // Stop music mode and cleanup if running
+    stopMusicReactiveMode();
     
     // Sync UI button group selection
     const group = document.getElementById("control-autoplay");
@@ -1258,12 +1422,15 @@ function animateTransitionStep() {
         rebuildDynamicSliders();
         
         // Handle Autoplay morph looping
-        if (state.autoplayMode !== "off") {
+        if (state.autoplayMode !== "off" && state.autoplayMode !== "music") {
             if (state.autoplayTimer) clearTimeout(state.autoplayTimer);
             state.autoplayTimer = setTimeout(() => {
                 triggerNextAutoplayTransition();
             }, 1500); // 1.5 second pause at rest
         }
+        
+        // Sync heart icon visual state when morph completes
+        syncHeartIconState();
     }
 }
 
@@ -1478,6 +1645,530 @@ function handleSelectFavoriteChange(e) {
     
     startTransitionTo(makeTargetStateFromFav(fav));
     showToast(`Loaded "${name}"`);
+}
+
+// Check if the current design matches any of the saved favorites
+function isCurrentDesignFavorited() {
+    const favorites = getFavorites();
+    const currentState = getSerializedState();
+    
+    // Helper to compare numbers within a small tolerance
+    const approxEqual = (a, b, tol = 0.005) => Math.abs(a - b) < tol;
+    
+    for (let name in favorites) {
+        const fav = favorites[name];
+        
+        // 1. Compare globals
+        if (fav.paletteName !== currentState.paletteName) continue;
+        if (!approxEqual(fav.globalScale, currentState.globalScale)) continue;
+        if (!approxEqual(fav.globalLineWidth, currentState.globalLineWidth)) continue;
+        if (!approxEqual(fav.globalColorShift, currentState.globalColorShift)) continue;
+        if (Math.abs((fav.globalRotation ?? 0) - (currentState.globalRotation ?? 0)) > 3) continue;
+        
+        // 2. Compare layers
+        let layersMatch = true;
+        for (let i = 0; i < currentState.layers.length; i++) {
+            const curL = currentState.layers[i];
+            const favL = fav.layers[i];
+            
+            if (curL.type !== favL.type) { layersMatch = false; break; }
+            if (curL.active !== favL.active) { layersMatch = false; break; }
+            if (!approxEqual(curL.color_offset, favL.color_offset)) { layersMatch = false; break; }
+            
+            // Compare the active parameters
+            let paramsMatch = true;
+            const curParams = curL.params;
+            const favParams = favL.params;
+            for (let paramKey in curParams) {
+                const curVal = curParams[paramKey];
+                const favVal = favParams[paramKey];
+                if (typeof curVal === 'number' && typeof favVal === 'number') {
+                    if (!approxEqual(curVal, favVal)) { paramsMatch = false; break; }
+                } else if (curVal !== favVal) {
+                    paramsMatch = false;
+                    break;
+                }
+            }
+            if (!paramsMatch) { layersMatch = false; break; }
+        }
+        
+        if (layersMatch) {
+            return name;
+        }
+    }
+    return null;
+}
+
+// Sync the corner heart icon and select dropdown state
+function syncHeartIconState() {
+    const heartBtn = document.getElementById("btn-floating-heart");
+    if (!heartBtn) return;
+    const heartSvg = heartBtn.querySelector(".heart-icon");
+    if (!heartSvg) return;
+    
+    const matchedFavName = isCurrentDesignFavorited();
+    if (matchedFavName) {
+        heartSvg.classList.add("filled");
+        heartBtn.title = `Remove "${matchedFavName}" from Favorites`;
+        
+        const select = document.getElementById("select-favorites");
+        if (select && select.value !== matchedFavName) {
+            select.value = matchedFavName;
+        }
+    } else {
+        heartSvg.classList.remove("filled");
+        heartBtn.title = "Save to Favorites";
+        
+        const select = document.getElementById("select-favorites");
+        if (select && select.value !== "") {
+            select.value = "";
+        }
+    }
+}
+
+// Save or remove current design from favorites without prompts
+function toggleFavorite() {
+    const matchedName = isCurrentDesignFavorited();
+    const favorites = getFavorites();
+    
+    if (matchedName) {
+        // Already favorited, so remove it
+        delete favorites[matchedName];
+        saveFavorites(favorites);
+        showToast("Removed from Favorites");
+    } else {
+        // Not favorited, save it with an auto-generated name
+        const numFavs = Object.keys(favorites).length;
+        const newName = `Favorite #${numFavs + 1}`;
+        favorites[newName] = getSerializedState();
+        saveFavorites(favorites);
+        
+        const select = document.getElementById("select-favorites");
+        if (select) select.value = newName;
+        
+        showToast(`Saved to Favorites!`);
+    }
+    syncHeartIconState();
+}
+
+// Enter/Exit Fullscreen Mode
+function toggleFullscreen() {
+    const container = document.getElementById("app-container");
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    
+    if (!isFullscreen) {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        }
+        container.classList.add("fullscreen-mode");
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+        container.classList.remove("fullscreen-mode");
+    }
+    
+    setTimeout(resizeCanvas, 150);
+}
+
+// Audio Beat Detection Initializer
+async function initMusicAnalysis() {
+    if (state.musicReaction.audioContext) {
+        if (state.musicReaction.audioContext.state === "suspended") {
+            await state.musicReaction.audioContext.resume();
+        }
+        return true;
+    }
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: true
+            }, 
+            video: false 
+        });
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContextClass();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        
+        state.musicReaction.audioContext = ctx;
+        state.musicReaction.analyser = analyser;
+        state.musicReaction.audioSource = source;
+        return true;
+    } catch (err) {
+        console.error("Microphone access denied or error:", err);
+        showToast("Microphone access required for Music Mode!");
+        return false;
+    }
+}
+
+function startMusicReactiveMode() {
+    initMusicAnalysis().then(success => {
+        if (success) {
+            const indicator = document.getElementById("music-indicator");
+            if (indicator) indicator.classList.remove("hidden");
+            
+            if (!state.musicReaction.rafId) {
+                // Clear any transition timeouts to hand control to the music animation loop
+                if (state.autoplayTimer) {
+                    clearTimeout(state.autoplayTimer);
+                    state.autoplayTimer = null;
+                }
+                state.musicReaction.rafId = requestAnimationFrame(musicAnalysisLoop);
+            }
+            showToast("Music Mode Active!");
+        } else {
+            // Revert autoplay back to Off if mic is denied
+            const offBtn = document.querySelector('#control-autoplay button[data-mode="off"]');
+            if (offBtn) offBtn.click();
+        }
+    });
+}
+
+function stopMusicReactiveMode() {
+    const indicator = document.getElementById("music-indicator");
+    if (indicator) indicator.classList.add("hidden");
+    
+    if (state.musicReaction.rafId) {
+        cancelAnimationFrame(state.musicReaction.rafId);
+        state.musicReaction.rafId = null;
+    }
+    
+    // Reset offsets and arrays
+    state.musicReaction.scalePulse = 0.0;
+    state.musicReaction.thicknessPulse = 0.0;
+    state.musicReaction.colorShiftAccum = 0.0;
+    state.musicReaction.rotationAccum = 0.0;
+    state.musicReaction.highJitter = 0.0;
+    
+    state.musicReaction.beatTimes = [];
+    state.musicReaction.smoothedBpm = 0.0;
+    state.musicReaction.lastBpmUpdateTime = 0;
+    
+    state.musicReaction.midsHistory = [];
+    state.musicReaction.highsHistory = [];
+    state.musicReaction.lastMidBeatTime = 0;
+    state.musicReaction.lastHighBeatTime = 0;
+    state.musicReaction.midBeatCount = 0;
+    state.musicReaction.highBeatCount = 0;
+    state.musicReaction.energyHistory = [];
+    state.musicReaction.lastFrameTime = 0;
+    state.musicReaction.lastStrongBpm = 0.0;
+    state.musicReaction.lastStrongBpmTime = 0;
+    
+    drawMandalaOnScreen();
+}
+
+// Estimate BPM using Autocorrelation on the energy envelope history (industry-standard DJ algorithm approach)
+function estimateBpmByAutocorrelation() {
+    const history = state.musicReaction.energyHistory;
+    const fps = state.musicReaction.fps || 60;
+    const now = performance.now();
+    
+    // Need at least 2.5 seconds of history to identify tempo
+    const minRequiredSamples = Math.round(2.5 * fps);
+    const minLag = Math.round(0.27 * fps); // ~220 BPM upper limit
+    const maxLag = Math.round(1.2 * fps);  // ~50 BPM lower limit
+    
+    if (history.length < minRequiredSamples) {
+        state.musicReaction.bpmSpectrum = [];
+        return 0;
+    }
+    
+    const N = history.length;
+    
+    // Calculate mean and variance to detect flat signal (silence/ambient noise)
+    const mean = history.reduce((sum, v) => sum + v, 0) / N;
+    const variance = history.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / N;
+    
+    const isQuietOrFlat = (mean < 12.0 || variance < 20.0);
+    
+    // Subtract mean to remove DC offset and isolate AC variation
+    const acHistory = history.map(v => v - mean);
+    
+    const correlations = new Float32Array(maxLag + 2);
+    let maxCorrelation = -Infinity;
+    let bestLag = 0;
+    
+    for (let lag = minLag; lag <= maxLag; lag++) {
+        let sum = 0;
+        let count = 0;
+        for (let i = lag; i < N; i++) {
+            sum += acHistory[i] * acHistory[i - lag];
+            count++;
+        }
+        const corr = sum / count;
+        correlations[lag] = corr;
+        
+        if (corr > maxCorrelation) {
+            maxCorrelation = corr;
+            bestLag = lag;
+        }
+    }
+    
+    // Peak Picking: find the first local maximum (fundamental beat tempo) rather than just the absolute highest peak
+    let peakLag = bestLag;
+    for (let lag = minLag + 1; lag < maxLag; lag++) {
+        const prev = correlations[lag - 1];
+        const curr = correlations[lag];
+        const next = correlations[lag + 1];
+        
+        // Is it a local peak?
+        if (curr > prev && curr > next && curr > 0) {
+            // Must have significant strength (at least 35% of absolute max correlation)
+            if (curr > maxCorrelation * 0.35) {
+                peakLag = lag;
+                break;
+            }
+        }
+    }
+    
+    // Handle quiet/indistinct segments (tempo hold memory)
+    if (isQuietOrFlat) {
+        if (state.musicReaction.lastStrongBpm > 0 && (now - state.musicReaction.lastStrongBpmTime < 8000)) {
+            // We have a recent strong BPM memory - fall back to it!
+            const elapsed = now - state.musicReaction.lastStrongBpmTime;
+            const dimFactor = Math.max(0.05, 1.0 - (elapsed / 2000.0)); // Dim spectrum over 2 seconds
+            
+            const correlationArray = [];
+            for (let lag = minLag; lag <= maxLag; lag++) {
+                const bpmVal = (60.0 * fps) / lag;
+                const val = (maxCorrelation > 0) ? Math.max(0, correlations[lag] / maxCorrelation) * dimFactor : 0.0;
+                correlationArray.push({ bpm: bpmVal, val: val });
+            }
+            correlationArray.sort((a, b) => a.bpm - b.bpm);
+            state.musicReaction.bpmSpectrum = correlationArray;
+            
+            return state.musicReaction.lastStrongBpm;
+        }
+        
+        // Otherwise, no memory or memory expired: clear and return 0
+        state.musicReaction.bpmSpectrum = [];
+        return 0;
+    }
+    
+    // Convert lag in frames to BPM
+    const bpm = (60.0 * fps) / peakLag;
+    
+    // If tempo calculation is valid, record this as a strong detection
+    if (bpm >= 50 && bpm <= 220) {
+        state.musicReaction.lastStrongBpm = bpm;
+        state.musicReaction.lastStrongBpmTime = now;
+    }
+    
+    // Save correlation spectrum data for rendering
+    const correlationArray = [];
+    for (let lag = minLag; lag <= maxLag; lag++) {
+        const bpmVal = (60.0 * fps) / lag;
+        const val = (maxCorrelation > 0) ? Math.max(0, correlations[lag] / maxCorrelation) : 0.0;
+        correlationArray.push({ bpm: bpmVal, val: val });
+    }
+    correlationArray.sort((a, b) => a.bpm - b.bpm);
+    state.musicReaction.bpmSpectrum = correlationArray;
+    
+    return bpm;
+}
+
+function musicAnalysisLoop() {
+    if (state.autoplayMode !== "music") {
+        stopMusicReactiveMode();
+        return;
+    }
+    
+    // Track FPS dynamically for hardware/frequency independence
+    const now = performance.now();
+    if (state.musicReaction.lastFrameTime) {
+        const elapsed = now - state.musicReaction.lastFrameTime;
+        const instantFps = elapsed > 0 ? 1000.0 / elapsed : 60.0;
+        // Exponential smoothing for FPS
+        state.musicReaction.fps = state.musicReaction.fps * 0.98 + instantFps * 0.02;
+    }
+    state.musicReaction.lastFrameTime = now;
+    
+    const analyser = state.musicReaction.analyser;
+    if (analyser) {
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
+        
+        // 1. EXTRACT BANDS
+        // Bass energy: target kick drum frequencies (bins 1-3 correspond to ~86Hz - ~258Hz)
+        const bassEnergy = (dataArray[1] + dataArray[2] + dataArray[3]) / 3;
+        
+        // Mids energy: target snare/claps (bins 6-16 correspond to ~516Hz - ~1376Hz)
+        const midsEnergy = (dataArray[6] + dataArray[8] + dataArray[10] + dataArray[12] + dataArray[14]) / 5;
+        
+        // Highs energy: target hi-hats/sizzle (bins 18-32 correspond to ~1548Hz - ~2752Hz)
+        const highsEnergy = (dataArray[18] + dataArray[22] + dataArray[26] + dataArray[30]) / 4;
+        
+        // 1.5 ACCUMULATE ENERGY HISTORY FOR AUTOCORRELATION
+        // Composite energy envelope represents overall rhythm (bass kicks + mid snares)
+        const instantEnergy = bassEnergy * 1.5 + midsEnergy * 0.8;
+        state.musicReaction.energyHistory.push(instantEnergy);
+        
+        // Keep 4.5 seconds of energy history
+        const maxSamples = Math.round(4.5 * state.musicReaction.fps);
+        if (state.musicReaction.energyHistory.length > maxSamples) {
+            state.musicReaction.energyHistory.shift();
+        }
+        
+        // 2. BASS (KICK) BEAT DETECTION
+        const bassHistory = state.musicReaction.history;
+        let avgBass = 0;
+        if (bassHistory.length > 0) {
+            avgBass = bassHistory.reduce((sum, v) => sum + v, 0) / bassHistory.length;
+        }
+        bassHistory.push(bassEnergy);
+        if (bassHistory.length > state.musicReaction.historyMax) bassHistory.shift();
+        
+        const timeSinceLastBass = now - state.musicReaction.lastBeatTime;
+        const bassThreshold = 1.15;
+        const minBassFloor = 28;
+        let isBassBeat = false;
+        
+        if (bassEnergy > minBassFloor && bassEnergy > avgBass * bassThreshold && timeSinceLastBass > 280) {
+            state.musicReaction.lastBeatTime = now;
+            state.musicReaction.beatCount++;
+            isBassBeat = true;
+            
+            // Record beat timestamp
+            state.musicReaction.beatTimes.push(now);
+            if (state.musicReaction.beatTimes.length > 24) {
+                state.musicReaction.beatTimes.shift();
+            }
+            
+            // Trigger Bass pulses
+            state.musicReaction.scalePulse = 0.18;
+            state.musicReaction.colorShiftAccum = (state.musicReaction.colorShiftAccum + 0.05) % 1.0;
+            
+            // Every 16 beats, transition to a new design (phrase change)
+            if (state.musicReaction.beatCount % 16 === 0 && !animationController.isAnimating) {
+                triggerNextAutoplayTransition();
+            }
+        }
+        
+        // 3. MIDS (SNARE/CLAP) BEAT DETECTION
+        const midsHistory = state.musicReaction.midsHistory;
+        let avgMids = 0;
+        if (midsHistory.length > 0) {
+            avgMids = midsHistory.reduce((sum, v) => sum + v, 0) / midsHistory.length;
+        }
+        midsHistory.push(midsEnergy);
+        if (midsHistory.length > 30) midsHistory.shift();
+        
+        const timeSinceLastMid = now - state.musicReaction.lastMidBeatTime;
+        const midsThreshold = 1.25;
+        const minMidsFloor = 20;
+        let isMidBeat = false;
+        
+        if (midsEnergy > minMidsFloor && midsEnergy > avgMids * midsThreshold && timeSinceLastMid > 320) {
+            state.musicReaction.lastMidBeatTime = now;
+            state.musicReaction.midBeatCount++;
+            isMidBeat = true;
+            
+            // Trigger Mid pulses
+            state.musicReaction.thicknessPulse = 1.0;
+            state.musicReaction.rotationAccum = (state.musicReaction.rotationAccum + 4.5) % 360;
+        }
+        
+        // 4. HIGHS (HI-HAT/SHAKER) BEAT DETECTION
+        const highsHistory = state.musicReaction.highsHistory;
+        let avgHighs = 0;
+        if (highsHistory.length > 0) {
+            avgHighs = highsHistory.reduce((sum, v) => sum + v, 0) / highsHistory.length;
+        }
+        highsHistory.push(highsEnergy);
+        if (highsHistory.length > 30) highsHistory.shift();
+        
+        const timeSinceLastHigh = now - state.musicReaction.lastHighBeatTime;
+        const highsThreshold = 1.35;
+        const minHighsFloor = 10;
+        let isHighBeat = false;
+        
+        if (highsEnergy > minHighsFloor && highsEnergy > avgHighs * highsThreshold && timeSinceLastHigh > 180) {
+            state.musicReaction.lastHighBeatTime = now;
+            state.musicReaction.highBeatCount++;
+            isHighBeat = true;
+            
+            // Trigger High pulses (slight scale contraction pulse)
+            state.musicReaction.scalePulse -= 0.03;
+        }
+        
+        // 5. DECAYS & ROTATIONS
+        state.musicReaction.scalePulse *= 0.90;
+        state.musicReaction.thicknessPulse *= 0.88;
+        
+        state.musicReaction.rotationAccum = (state.musicReaction.rotationAccum + 0.3 + (midsEnergy / 255) * 1.2) % 360;
+        state.musicReaction.highJitter = (highsEnergy / 255) * 0.04 * Math.sin(now / 50);
+        
+        // 6. UPDATE STATUS & BPM DISPLAY
+        const statusText = document.querySelector("#music-indicator .music-status");
+        const debugText = document.querySelector("#music-indicator .music-debug-info");
+        
+        // Always run the autocorrelation algorithm on every single frame to keep the spectrum rendering live
+        const calculatedBpm = estimateBpmByAutocorrelation();
+        
+        if (statusText) {
+            const meanEnergy = state.musicReaction.energyHistory.length > 0
+                ? state.musicReaction.energyHistory.reduce((sum, v) => sum + v, 0) / state.musicReaction.energyHistory.length
+                : 0;
+                
+            let variance = 0;
+            if (state.musicReaction.energyHistory.length > 0) {
+                variance = state.musicReaction.energyHistory.reduce((sum, v) => sum + Math.pow(v - meanEnergy, 2), 0) / state.musicReaction.energyHistory.length;
+            }
+                
+            if (meanEnergy < 12.0 || variance < 20.0 || calculatedBpm === 0) {
+                // Signal is quiet, OR signal is flat noise (very low variance), OR calculation failed/returned 0
+                statusText.textContent = "No beat detected";
+                state.musicReaction.smoothedBpm = 0.0;
+            } else {
+                if (calculatedBpm >= 50 && calculatedBpm <= 220) {
+                    // Apply heavy Exponential Moving Average (EMA) to prevent visual jumps
+                    if (state.musicReaction.smoothedBpm === 0) {
+                        state.musicReaction.smoothedBpm = calculatedBpm;
+                    } else {
+                        state.musicReaction.smoothedBpm = state.musicReaction.smoothedBpm * 0.985 + calculatedBpm * 0.015;
+                    }
+                    
+                    // Throttle visual label updates to once every 1200ms
+                    if (now - state.musicReaction.lastBpmUpdateTime > 1200) {
+                        state.musicReaction.lastBpmUpdateTime = now;
+                        const displayBpm = Math.round(state.musicReaction.smoothedBpm);
+                        statusText.textContent = `${displayBpm} BPM detected`;
+                    }
+                } else if (now - state.musicReaction.lastBpmUpdateTime > 1200) {
+                    statusText.textContent = "Detecting BPM...";
+                }
+            }
+        }
+        
+        if (debugText) {
+            const rawB = Math.round(bassEnergy);
+            const thrB = Math.round(avgBass * bassThreshold);
+            const rawM = Math.round(midsEnergy);
+            const thrM = Math.round(avgMids * midsThreshold);
+            const rawH = Math.round(highsEnergy);
+            const thrH = Math.round(avgHighs * highsThreshold);
+            const activeFps = Math.round(state.musicReaction.fps);
+            
+            // Format telemetry for all three frequency bands plus active framerate (FPS)
+            debugText.textContent = `B:${rawB}/${thrB} | M:${rawM}/${thrM} | H:${rawH}/${thrH} | FPS:${activeFps}`;
+        }
+    }
+    
+    drawMandalaOnScreen();
+    
+    state.musicReaction.rafId = requestAnimationFrame(musicAnalysisLoop);
 }
 
 // Success Toast Notification Trigger
@@ -1707,12 +2398,30 @@ function bindEvents() {
     document.getElementById("btn-export-dark").addEventListener("click", () => exportDesign(true));
     
     // 7.5 Favorites Commands
-    document.getElementById("btn-save-favorite").addEventListener("click", handleSaveFavorite);
+    document.getElementById("btn-save-favorite").addEventListener("click", toggleFavorite);
     document.getElementById("btn-delete-favorite").addEventListener("click", handleDeleteFavorite);
     document.getElementById("select-favorites").addEventListener("change", (e) => {
         pushHistoryState();
         turnAutoplayOff(e);
         handleSelectFavoriteChange(e);
+    });
+    
+    // 7.5.5 Floating Controls
+    const floatHeart = document.getElementById("btn-floating-heart");
+    if (floatHeart) {
+        floatHeart.addEventListener("click", toggleFavorite);
+    }
+    const floatFs = document.getElementById("btn-floating-fullscreen");
+    if (floatFs) {
+        floatFs.addEventListener("click", toggleFullscreen);
+    }
+    
+    // 7.5.8 Keyboard Shortcuts (Cmd+S / Ctrl+S to save/toggle favorite)
+    window.addEventListener("keydown", (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+            e.preventDefault(); // Stop native browser save dialog
+            toggleFavorite();
+        }
     });
     
     // 7.6 Autoplay Controls
@@ -1724,12 +2433,19 @@ function bindEvents() {
             const mode = e.target.getAttribute("data-mode");
             state.autoplayMode = mode;
             
+            // Manage Music Audio state transitions
+            if (mode === "music") {
+                startMusicReactiveMode();
+            } else {
+                stopMusicReactiveMode();
+            }
+            
             if (state.autoplayTimer) {
                 clearTimeout(state.autoplayTimer);
                 state.autoplayTimer = null;
             }
             
-            if (mode !== "off") {
+            if (mode !== "off" && mode !== "music") {
                 triggerNextAutoplayTransition();
             }
         });
@@ -1797,6 +2513,23 @@ function init() {
     
     rebuildDynamicSliders();
     drawMandalaOnScreen();
+    
+    // Dynamically set version and file update time on the header tooltip (automatically reads file timestamp)
+    const titleEl = document.querySelector("#panel-header h1");
+    if (titleEl) {
+        const lastMod = new Date(document.lastModified);
+        const pad = (n) => String(n).padStart(2, "0");
+        const yyyy = lastMod.getFullYear();
+        const mm = pad(lastMod.getMonth() + 1);
+        const dd = pad(lastMod.getDate());
+        let hours = lastMod.getHours();
+        const minutes = pad(lastMod.getMinutes());
+        const ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12 || 12; // Convert 0 to 12
+        const formattedDate = `${yyyy}-${mm}-${dd} ${pad(hours)}:${minutes} ${ampm}`;
+        
+        titleEl.setAttribute("data-tooltip", `Version 2.1.0\nUpdated: ${formattedDate}`);
+    }
 }
 
 window.addEventListener("load", init);
