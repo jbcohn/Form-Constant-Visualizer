@@ -17,7 +17,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌀</text></svg>">
     
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
     <div id="app-container">
@@ -54,8 +54,8 @@
         
         <!-- Interactive Control Panel (Sidebar on desktop / bottom-sheet on mobile) -->
         <div id="control-panel">
-            <div id="drag-handle" class="mobile-only">
-                <div class="handle-bar"></div>
+            <div id="panel-drag-handle" class="drag-handle" title="Drag to resize / click to toggle">
+                <div class="drag-pill"></div>
             </div>
             
             <header id="panel-header">
@@ -203,6 +203,16 @@
                             <input id="slide-transition-speed" type="range" min="0.5" max="8.0" step="0.1" value="1.5">
                         </div>
                     </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <div class="slider-header">
+                                <span>Phrase Shift Beats (Music Mode)</span>
+                                <span id="val-music-beats">16 beats</span>
+                            </div>
+                            <input id="slide-music-beats" type="range" min="4" max="64" step="4" value="16">
+                        </div>
+                    </div>
                 </section>
             </div>
             
@@ -217,7 +227,7 @@
     </div>
     
     <!-- Code Script -->
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=21"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>

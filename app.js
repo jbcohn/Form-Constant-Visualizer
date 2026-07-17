@@ -163,6 +163,7 @@ const state = {
         lastFrameTime: 0,
         lastStrongBpm: 0.0,
         lastStrongBpmTime: 0,
+        beatsPerTransition: 16,
         rafId: null
     },
     
@@ -193,14 +194,19 @@ const MAX_HISTORY_LEN = 30;
 const canvas = document.getElementById("viewport-canvas");
 const ctx = canvas.getContext("2d");
 
+// Device & Layout Helper Queries
+function isBottomSheet() {
+    return window.innerWidth <= 600 && (window.innerHeight / window.innerWidth) >= (15 / 13);
+}
+
+function isMobileOrTablet() {
+    return window.innerWidth <= 1024;
+}
+
 // Responsive Scaling
 function resizeCanvas() {
     const rect = canvas.parentElement.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    
-    // Size display size in CSS pixels
-    canvas.style.width = rect.width + "px";
-    canvas.style.height = rect.height + "px";
     
     // Scale backing store by device pixel ratio for smooth anti-aliased vectors
     canvas.width = rect.width * dpr;
@@ -213,9 +219,19 @@ window.addEventListener("resize", resizeCanvas);
 
 // Render Geometry Routine
 function renderMandala(drawCtx, width, height, scaleMultiplier) {
+    const isPortrait = height > width;
+    
     const cx = width / 2;
-    const cy = height / 2;
-    const baseScale = Math.min(width, height) / 2 * state.globalScale * 0.90;
+    let cy = height / 2;
+    let baseScale = Math.min(width, height) / 2 * state.globalScale * 0.90;
+    
+    if (isPortrait) {
+        // Lock center to the top square of the viewport
+        // Opening the bottom sheet overlays and crops the bottom, but the display remains completely stationary
+        cy = width / 2;
+        baseScale = width / 2 * state.globalScale * 0.90;
+    }
+    
     const palette = PALETTES[state.activePaletteIdx];
     
     // Draw layers from Layer 4 down to Layer 1
@@ -896,6 +912,12 @@ function drawBpmSpectrum(drawCtx, width, height) {
     drawCtx.font = `${7 * dpr}px monospace`;
     drawCtx.textAlign = "left";
     drawCtx.fillText("BPM TEMPO SPECTRUM", startX, startY - specHeight - 2 * dpr);
+    
+    // Beat countdown display
+    const currentCount = state.musicReaction.beatCount % state.musicReaction.beatsPerTransition;
+    const remaining = state.musicReaction.beatsPerTransition - currentCount;
+    drawCtx.textAlign = "right";
+    drawCtx.fillText(`BEAT: ${state.musicReaction.beatCount} | NEXT SHIFT: ${remaining}/${state.musicReaction.beatsPerTransition} BEATS`, startX + specWidth, startY - specHeight - 2 * dpr);
     
     drawCtx.restore();
 }
@@ -2030,7 +2052,32 @@ function musicAnalysisLoop() {
         bassHistory.push(bassEnergy);
         if (bassHistory.length > state.musicReaction.historyMax) bassHistory.shift();
         
-        const timeSinceLastBass = now - state.musicReaction.lastBeatTime;
+        let timeSinceLastBass = now - state.musicReaction.lastBeatTime;
+        
+        // Virtual beat generator: fallback when physical beat is too quiet
+        const currentBpm = state.musicReaction.smoothedBpm > 0 
+            ? state.musicReaction.smoothedBpm 
+            : state.musicReaction.lastStrongBpm;
+            
+        if (currentBpm >= 50 && currentBpm <= 220) {
+            const expectedInterval = 60000 / currentBpm;
+            // If the time since the last beat exceeds 108% of the expected interval,
+            // synthetically trigger a beat to maintain flow and keep the count going
+            if (timeSinceLastBass > expectedInterval * 1.08) {
+                state.musicReaction.lastBeatTime = now - (timeSinceLastBass % expectedInterval);
+                state.musicReaction.beatCount++;
+                timeSinceLastBass = now - state.musicReaction.lastBeatTime; // update local delta
+                
+                // Light pulse to maintain visual rhythm during quiet parts
+                state.musicReaction.scalePulse = 0.12;
+                state.musicReaction.colorShiftAccum = (state.musicReaction.colorShiftAccum + 0.04) % 1.0;
+                
+                if (state.musicReaction.beatCount % state.musicReaction.beatsPerTransition === 0 && !animationController.isAnimating) {
+                    triggerNextAutoplayTransition();
+                }
+            }
+        }
+        
         const bassThreshold = 1.15;
         const minBassFloor = 28;
         let isBassBeat = false;
@@ -2050,8 +2097,8 @@ function musicAnalysisLoop() {
             state.musicReaction.scalePulse = 0.18;
             state.musicReaction.colorShiftAccum = (state.musicReaction.colorShiftAccum + 0.05) % 1.0;
             
-            // Every 16 beats, transition to a new design (phrase change)
-            if (state.musicReaction.beatCount % 16 === 0 && !animationController.isAnimating) {
+            // Every beatsPerTransition beats, transition to a new design (phrase change)
+            if (state.musicReaction.beatCount % state.musicReaction.beatsPerTransition === 0 && !animationController.isAnimating) {
                 triggerNextAutoplayTransition();
             }
         }
@@ -2139,6 +2186,9 @@ function musicAnalysisLoop() {
                     } else {
                         state.musicReaction.smoothedBpm = state.musicReaction.smoothedBpm * 0.985 + calculatedBpm * 0.015;
                     }
+                    
+                    state.musicReaction.lastStrongBpm = state.musicReaction.smoothedBpm;
+                    state.musicReaction.lastStrongBpmTime = now;
                     
                     // Throttle visual label updates to once every 1200ms
                     if (now - state.musicReaction.lastBpmUpdateTime > 1200) {
@@ -2416,6 +2466,22 @@ function bindEvents() {
         floatFs.addEventListener("click", toggleFullscreen);
     }
     
+    // Sync native fullscreen changes (e.g. Esc key exit) to avoid sticky fullscreen-mode class
+    const onFullscreenChange = () => {
+        const container = document.getElementById("app-container");
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+        if (container) {
+            if (isFullscreen) {
+                container.classList.add("fullscreen-mode");
+            } else {
+                container.classList.remove("fullscreen-mode");
+            }
+            setTimeout(resizeCanvas, 150);
+        }
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    
     // 7.5.8 Keyboard Shortcuts (Cmd+S / Ctrl+S to save/toggle favorite)
     window.addEventListener("keydown", (e) => {
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
@@ -2457,41 +2523,172 @@ function bindEvents() {
         document.getElementById("val-transition-speed").textContent = speedSec.toFixed(1) + "s";
     });
     
-    // 8. Mobile Sliding Panel Bottom Sheet Gesture/Click events
-    const dragHandle = document.getElementById("drag-handle");
-    const panelHeader = document.getElementById("panel-header");
-    const panel = document.getElementById("control-panel");
-    
-    function togglePanel() {
-        panel.classList.toggle("open");
-    }
-    
-    dragHandle.addEventListener("click", togglePanel);
-    panelHeader.addEventListener("click", (e) => {
-        // Toggle only on mobile sizes
-        if (window.innerWidth <= 800) {
-            togglePanel();
-        }
+    document.getElementById("slide-music-beats").addEventListener("input", (e) => {
+        const beats = parseInt(e.target.value);
+        state.musicReaction.beatsPerTransition = beats;
+        document.getElementById("val-music-beats").textContent = beats + " beats";
     });
     
-    // Optional Swipe gesture on handle
-    let touchStartY = 0;
-    dragHandle.addEventListener("touchstart", (e) => {
-        touchStartY = e.touches[0].clientY;
-    }, {passive: true});
+    // 8. Resizable / Draggable Panel Events
+    const dragHandle = document.getElementById("panel-drag-handle");
+    const panel = document.getElementById("control-panel");
+    const panelHeader = document.getElementById("panel-header");
     
-    dragHandle.addEventListener("touchend", (e) => {
-        const touchEndY = e.changedTouches[0].clientY;
-        const diff = touchStartY - touchEndY;
-        // Swipe up (diff > 30) -> open
-        if (diff > 30 && !panel.classList.contains("open")) {
-            panel.classList.add("open");
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+    let draggedDistance = 0;
+    
+
+    
+    function togglePanel() {
+        if (panel) {
+            panel.classList.toggle("open");
+            // Clear custom inline sizing when toggling closed/open to let CSS transitions work cleanly
+            panel.style.width = "";
+            panel.style.height = "";
+            
+            // Smoothly animate the mandala position during the 400ms CSS transition
+            const startTime = performance.now();
+            const animateTransition = (now) => {
+                resizeCanvas();
+                if (now - startTime < 450) {
+                    requestAnimationFrame(animateTransition);
+                }
+            };
+            requestAnimationFrame(animateTransition);
         }
-        // Swipe down (diff < -30) -> close
-        else if (diff < -30 && panel.classList.contains("open")) {
-            panel.classList.remove("open");
-        }
-    }, {passive: true});
+    }
+    
+    if (dragHandle && panel) {
+        // Drag starts
+        const onDragStart = (clientX, clientY) => {
+            isDragging = true;
+            startX = clientX;
+            startY = clientY;
+            startWidth = panel.getBoundingClientRect().width;
+            startHeight = panel.getBoundingClientRect().height;
+            draggedDistance = 0;
+            
+            dragHandle.classList.add("active");
+            document.body.style.userSelect = "none";
+            document.body.style.webkitUserSelect = "none";
+        };
+        
+        // Drag moves
+        const onDragMove = (clientX, clientY) => {
+            if (!isDragging) return;
+            
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+            draggedDistance = Math.max(draggedDistance, Math.abs(dx) + Math.abs(dy));
+            
+            if (isMobileOrTablet()) {
+                if (isBottomSheet()) {
+                    // Portrait bottom sheet resizer: drag height
+                    const newHeight = startHeight - dy;
+                    const clampedHeight = Math.max(80, Math.min(window.innerHeight * 0.9, newHeight));
+                    panel.style.height = clampedHeight + "px";
+                    panel.style.width = ""; // keep width 100%
+                    
+                    // Force open class while dragging
+                    if (!panel.classList.contains("open")) {
+                        panel.classList.add("open");
+                    }
+                } else {
+                    // Landscape/Square side sheet resizer: drag width
+                    const newWidth = startWidth - dx;
+                    const clampedWidth = Math.max(120, Math.min(window.innerWidth * 0.85, newWidth));
+                    panel.style.width = clampedWidth + "px";
+                    panel.style.height = ""; // keep height 100%
+                    
+                    if (!panel.classList.contains("open")) {
+                        panel.classList.add("open");
+                    }
+                }
+            } else {
+                // Desktop: drag width
+                const newWidth = startWidth - dx;
+                const clampedWidth = Math.max(280, Math.min(window.innerWidth * 0.6, newWidth));
+                panel.style.width = clampedWidth + "px";
+            }
+            
+            // Live canvas resize during drag!
+            resizeCanvas();
+        };
+        
+        // Drag ends
+        const onDragEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            dragHandle.classList.remove("active");
+            document.body.style.userSelect = "";
+            document.body.style.webkitUserSelect = "";
+            
+            // Differentiate click from drag
+            if (draggedDistance < 6) {
+                // Treat as click - toggle open state on mobile/tablet
+                if (isMobileOrTablet()) {
+                    togglePanel();
+                }
+            } else {
+                // Handle snap shut thresholds on drag end
+                if (isMobileOrTablet()) {
+                    if (isBottomSheet()) {
+                        const currentHeight = panel.getBoundingClientRect().height;
+                        if (currentHeight < 150) {
+                            // Snap shut
+                            panel.classList.remove("open");
+                            panel.style.height = "";
+                        }
+                    } else {
+                        const currentWidth = panel.getBoundingClientRect().width;
+                        if (currentWidth < 180) {
+                            // Snap shut
+                            panel.classList.remove("open");
+                            panel.style.width = "";
+                        }
+                    }
+                }
+            }
+            resizeCanvas();
+        };
+        
+        // Mouse Listeners
+        dragHandle.addEventListener("mousedown", (e) => {
+            onDragStart(e.clientX, e.clientY);
+        });
+        
+        window.addEventListener("mousemove", (e) => {
+            onDragMove(e.clientX, e.clientY);
+        });
+        
+        window.addEventListener("mouseup", onDragEnd);
+        
+        // Touch Listeners
+        dragHandle.addEventListener("touchstart", (e) => {
+            onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: true});
+        
+        window.addEventListener("touchmove", (e) => {
+            if (!isDragging) return;
+            onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+            if (e.cancelable) e.preventDefault();
+        }, {passive: false});
+        
+        window.addEventListener("touchend", onDragEnd);
+    }
+    
+    if (panelHeader) {
+        panelHeader.addEventListener("click", (e) => {
+            // Header click collapses panel on small screens
+            if (isMobileOrTablet()) {
+                togglePanel();
+            }
+        });
+    }
 }
 
 // Initial Bootup
@@ -2532,4 +2729,10 @@ function init() {
     }
 }
 
-window.addEventListener("load", init);
+window.addEventListener("load", () => {
+    init();
+    // Yield to browser rendering engine to ensure CSS layout is fully calculated before sizing canvas
+    requestAnimationFrame(() => {
+        resizeCanvas();
+    });
+});

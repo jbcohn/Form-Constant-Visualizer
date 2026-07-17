@@ -6,20 +6,20 @@
     -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: #020617;
     color: #f8fafc;
     overflow: hidden;
-    height: 100dvh;
+    height: 100%;
 }
 
 /* Main Layout Grid */
 #app-container {
     display: flex;
     flex-direction: row;
-    height: 100dvh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
 }
 
 /* Viewport Canvas Area */
@@ -627,59 +627,169 @@ input[type="range"]::-moz-range-thumb:hover {
 }
 
 
+/* Drag Handle / Splitter styles (Desktop defaults) */
+#panel-drag-handle {
+    position: absolute;
+    left: -12px;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    cursor: ew-resize;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    transition: background-color 0.2s, border-left 0.2s, border-top 0.2s, box-shadow 0.2s;
+}
+
+#panel-drag-handle:hover,
+#panel-drag-handle.active {
+    background-color: rgba(56, 189, 248, 0.1);
+}
+
+.drag-pill {
+    width: 4px;
+    height: 40px;
+    background-color: rgba(56, 189, 248, 0.4); /* Subtle blue tint so it stands out against dark background */
+    border-radius: 2px;
+    transition: background-color 0.2s, height 0.2s, width 0.2s;
+}
+
+#panel-drag-handle:hover .drag-pill,
+#panel-drag-handle.active .drag-pill {
+    background-color: #38bdf8;
+    height: 60px;
+    width: 5px;
+}
+
+/* Make the drag handle border and background stand out clearly when the panel is collapsed */
+#control-panel:not(.open) #panel-drag-handle {
+    border-left: 2px solid rgba(56, 189, 248, 0.6);
+    background-color: rgba(15, 23, 42, 0.85);
+    box-shadow: -4px 0 15px rgba(56, 189, 248, 0.25);
+}
+
 /* ==========================================================================
-   Responsive Mobile Styling (Bottom Sheet Layout)
+   Responsive Mobile Styling (Sliding Sidebar & Bottom Sheet Layout)
    ========================================================================== */
 @media (max-width: 1024px) {
     #app-container {
         flex-direction: column;
-        height: 100dvh;
-        overflow: hidden;
+        height: 100%;
+        position: relative;
     }
     
     #canvas-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vw;
+        width: 100%;
+        height: 100%;
         background-color: #020617;
-        z-index: 2;
+        z-index: 1;
+        position: relative;
     }
     
     #control-panel {
         position: fixed;
-        top: 100vw;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: auto;
-        border-left: none;
-        border-top: 2px solid #1e293b;
-        border-radius: 0;
-        transform: none;
-        transition: none;
-        background-color: #0f172a;
+        background-color: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-left: 1px solid rgba(56, 189, 248, 0.15);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), width 0.4s cubic-bezier(0.16, 1, 0.3, 1), height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         flex-direction: column;
-        z-index: 5;
+        z-index: 10;
+    }
+
+    /* Default Side Sheet (for narrow landscape, tablets, and square windows) */
+    #control-panel {
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 400px;
+        max-width: 85%;
+        height: 100%;
+        border-left: 1px solid rgba(56, 189, 248, 0.2);
+        border-top: none;
+        border-radius: 0;
+        transform: translateX(calc(100% - 12px)); /* 12px handle boundary stays visible */
+    }
+
+    #control-panel.open {
+        transform: translateX(0);
+    }
+
+    #panel-drag-handle {
+        left: -12px;
+        top: 0;
+        bottom: 0;
+        width: 24px;
+        height: 100%;
+        cursor: ew-resize;
+    }
+
+    /* Portrait orientation bottom sheet (only on narrow vertical screens e.g., aspect ratio <= 13:15 and width <= 600px) */
+    @media (max-width: 600px) and (max-aspect-ratio: 13/15) {
+        #control-panel {
+            left: 0;
+            right: 0;
+            bottom: 0;
+            top: auto;
+            width: 100%;
+            max-width: 100%;
+            height: 50%; /* Default to half height, adjustable by dragging */
+            border-top: 1px solid rgba(56, 189, 248, 0.2);
+            border-left: none;
+            border-radius: 20px 20px 0 0;
+            transform: translateY(calc(100% - 12px)); /* 12px handle boundary stays visible */
+        }
+        
+        #control-panel.open {
+            transform: translateY(0);
+        }
+
+        #panel-drag-handle {
+            left: 0;
+            right: 0;
+            top: -12px;
+            bottom: auto;
+            width: 100%;
+            height: 24px;
+            cursor: ns-resize;
+            border-left: none;
+        }
+
+        .drag-pill {
+            width: 40px;
+            height: 4px;
+        }
+
+        #panel-drag-handle:hover .drag-pill,
+        #panel-drag-handle.active .drag-pill {
+            width: 60px;
+            height: 4px;
+        }
+
+        /* Collapsed style adjustments for horizontal layout */
+        #control-panel:not(.open) #panel-drag-handle {
+            border-top: 2px solid rgba(56, 189, 248, 0.6);
+            border-left: none;
+            box-shadow: 0 -4px 15px rgba(56, 189, 248, 0.25);
+        }
     }
     
     .mobile-only {
-        display: none;
-    }
-    
-    #drag-handle {
-        display: none;
+        display: block;
     }
     
     #panel-header {
-        display: none;
+        display: block;
+        padding: 12px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
     
     #panel-scroll {
-        padding: 12px 18px; /* Extra horizontal padding for scrolling gutter */
+        padding: 12px 18px;
         gap: 12px;
         flex: 1;
         overflow-y: auto;
@@ -704,14 +814,17 @@ input[type="range"]::-moz-range-thumb:hover {
     
     /* Toast spacing on mobile */
     #toast {
-        bottom: calc(100dvh - 100vw + 20px);
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
         max-width: 90%;
         font-size: 0.8rem;
     }
 }
 
 /* --- New Fullscreen & Floating Controls --- */
-.fullscreen-mode #control-panel {
+.fullscreen-mode #control-panel,
+.fullscreen-mode #panel-drag-handle {
     display: none !important;
 }
 
